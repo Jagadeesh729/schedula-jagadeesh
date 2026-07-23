@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, OneToMany, JoinColumn } from 'typeorm';
+import { RecurringAvailability } from './recurring-availability.entity';
+import { CustomAvailability } from './custom-availability.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('doctor_profiles')
@@ -33,4 +35,10 @@ export class DoctorProfile {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @OneToMany(() => RecurringAvailability, (avail) => avail.doctor)
+  recurringAvailabilities: RecurringAvailability[];
+
+  @OneToMany(() => CustomAvailability, (avail) => avail.doctor)
+  customAvailabilities: CustomAvailability[];
 }
