@@ -13,26 +13,26 @@ import { Weekday } from '../enums/weekday.enum';
 @Entity('recurring_availabilities')
 export class RecurringAvailability {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @ManyToOne(() => DoctorProfile, (doctor) => doctor.recurringAvailabilities, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'doctor_id' })
-  doctor: DoctorProfile;
+  doctor!: DoctorProfile;
 
   @Column({ type: 'varchar' })
-  weekday: Weekday;
+  weekday!: Weekday;
 
   @Column({ name: 'start_time', type: 'time' })
-  startTime: string;
+  startTime!: string;
 
   @Column({ name: 'end_time', type: 'time' })
-  endTime: string;
+  endTime!: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
