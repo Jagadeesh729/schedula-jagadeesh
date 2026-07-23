@@ -2,7 +2,7 @@
 
 Schedula is a healthcare booking and live queue management system designed to resolve clinic wait times, rigid scheduling, and doctor-patient pre-consultation information gaps. 
 
-This repository contains the **Day 1 System Design, Database Architecture, and NestJS Project Setup**.
+This repository contains the **Day 1 System Design, Database Architecture, and NestJS Project Setup**, aligned with both the core wireframe requirements and the group's reference structure.
 
 ---
 
@@ -16,7 +16,7 @@ Schedula solves high visiting and waiting times, rigid booking structures, and l
 ---
 
 ## 2. Tech Stack
-- **Framework**: [NestJS](https://nestjs.com/) (v11.x)
+- **Backend Framework**: [NestJS](https://nestjs.com/) (v11.x)
 - **Language**: [TypeScript](https://www.typescriptlang.org/) (v5.x)
 - **Platform**: [Node.js](https://nodejs.org/) (v24.x)
 - **Package Manager**: [npm](https://www.npmjs.com/) (v11.x)
@@ -63,168 +63,191 @@ schedula-jagadeesh/
 ---
 
 ## 4. Database Overview & Schema Design
-To support the application's workflows, the PostgreSQL database is designed with **17 core entities**.
+To support the application's workflows, the PostgreSQL database is designed with **18 core entities**, aligning the group reference diagram's table splits with full wireframe screen coverage (including Friends & Family, IVR, and Community features) in a normalized, 3NF-compliant structure.
 
-### 4.1. User Table
-Stores authentication details for users (patients, family members, or doctors).
+### 4.1. users
+Stores authentication details for users.
 - `id` (UUID, PK)
+- `email` (VARCHAR, UNIQUE, NOT NULL, Index)
 - `mobile_number` (VARCHAR, UNIQUE, NOT NULL, Index)
-- `name` (VARCHAR)
-- `created_at` (TIMESTAMP, Default NOW)
-- `updated_at` (TIMESTAMP, Default NOW)
+- `role` (VARCHAR) - 'PATIENT', 'DOCTOR'
+- `created_at` (TIMESTAMP)
 
-### 4.2. Doctor Table
+### 4.2. doctors
 Stores metadata for doctors practicing in clinics.
 - `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, UNIQUE, Index)
-- `clinic_id` (UUID, FK -> Clinic, Index)
-- `specialization` (VARCHAR, NOT NULL)
-- `experience_years` (INTEGER, NOT NULL)
-- `achievements` (TEXT)
-- `services` (TEXT[], NOT NULL)
-- `consultation_fee` (DECIMAL, NOT NULL)
+- `user_id` (UUID, FK -> users, UNIQUE, Index)
+- `specialization_id` (UUID, FK -> specializations, Index)
+- `name` (VARCHAR)
+- `qualification` (VARCHAR)
+- `experience_years` (INTEGER)
+- `clinic_name` (VARCHAR)
+- `consultation_fee` (DECIMAL)
 - `created_at` (TIMESTAMP)
 
-### 4.3. Patient Table
-Stores intake profiles. A user can create profiles for themselves or dependents.
+### 4.3. specializations
+Lookup table for doctor specializations (aligned with reference diagram).
 - `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, Index) - Owner of this patient profile
-- `name` (VARCHAR, NOT NULL)
-- `age` (INTEGER, NOT NULL)
-- `sex` (VARCHAR, NOT NULL)
-- `weight` (DECIMAL)
+- `name` (VARCHAR, UNIQUE, NOT NULL)
+- `description` (TEXT)
+
+### 4.4. doctor_availability
+Defines doctors' bookable calendar time slots (aligned with reference diagram).
+- `id` (UUID, PK)
+- `doctor_id` (UUID, FK -> doctors, Index)
+- `slot_date` (DATE)
+- `day_of_week` (VARCHAR) - 'MONDAY', 'TUESDAY', etc.
+- `start_time` (TIME)
+- `end_time` (TIME)
+- `max_tokens` (INTEGER)
 - `created_at` (TIMESTAMP)
 
-### 4.4. Appointment Table
+### 4.5. patients
+Stores clinical profile data.
+- `id` (UUID, PK)
+- `user_id` (UUID, FK -> users, Index)
+- `first_name` (VARCHAR)
+- `last_name` (VARCHAR)
+- `gender` (VARCHAR)
+- `date_of_birth` (DATE)
+- `profile_picture_url` (VARCHAR)
+- `created_at` (TIMESTAMP)
+
+### 4.6. appointments
 Records consultation bookings.
 - `id` (UUID, PK)
-- `doctor_id` (UUID, FK -> Doctor, Index)
-- `patient_id` (UUID, FK -> Patient, Index)
-- `slot_id` (UUID, FK -> AppointmentSlot, UNIQUE, Index)
-- `token_number` (INTEGER, NOT NULL)
-- `type` (VARCHAR, NOT NULL) - 'Regular', 'Online'
-- `visit_type` (VARCHAR, NOT NULL) - 'First time', 'Report', 'Follow-up'
-- `status` (VARCHAR, NOT NULL) - 'Upcoming', 'Completed', 'Cancelled', 'No-show'
-- `queue_status` (VARCHAR, NOT NULL) - 'Waiting', 'Consulted', 'Unable to meet'
-- `expected_time` (TIMESTAMP) - Dynamically calculated queue time
+- `patient_id` (UUID, FK -> patients, Index)
+- `doctor_id` (UUID, FK -> doctors, Index)
+- `slot_id` (UUID, FK -> doctor_availability, Index)
+- `consultation_type` (VARCHAR) - 'ONLINE', 'OFFLINE'
+- `appointment_date` (DATE)
+- `token_number` (INTEGER)
+- `status` (VARCHAR) - 'BOOKED', 'COMPLETED', 'CANCELLED', 'RESCHEDULED', 'PENDING'
+- `current_consulting_count` (INTEGER)
+- `expected_consulting_time` (TIME)
+- `payment_reference` (VARCHAR, NULLABLE)
 - `created_at` (TIMESTAMP)
 
-### 4.5. AppointmentSlot Table
-Defines doctors' bookable calendar time slots.
+### 4.7. medical_records
+Stores consultation findings (normalized into a separate table linked 1-to-1 with appointments).
 - `id` (UUID, PK)
-- `doctor_id` (UUID, FK -> Doctor, Index)
-- `date` (DATE, NOT NULL)
-- `start_time` (TIME, NOT NULL)
-- `end_time` (TIME, NOT NULL)
-- `max_capacity` (INTEGER, Default 1)
-- `booked_count` (INTEGER, Default 0)
-- `is_expired` (BOOLEAN, Default FALSE)
+- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
+- `complaint` (TEXT)
+- `diagnosis` (TEXT)
+- `prescription` (TEXT)
+- `doctor_notes` (TEXT, NULLABLE)
+- `follow_up_advice` (TEXT, NULLABLE)
 - `created_at` (TIMESTAMP)
 
-### 4.6. Clinic Table
-Represents clinical centers.
+### 4.8. previous_medical_histories
+Stores patient historical profiles (normalized into a separate table linked to patients).
 - `id` (UUID, PK)
-- `name` (VARCHAR, NOT NULL)
-- `address` (TEXT)
-- `contact_number` (VARCHAR)
-- `rating` (DECIMAL)
+- `patient_id` (UUID, FK -> patients, Index)
+- `ailments_history` (TEXT)
+- `past_diagnoses` (TEXT)
+- `medications_history` (TEXT)
+- `allergies` (TEXT)
+- `surgeries` (TEXT)
+- `family_medical_history` (TEXT)
+- `lifestyle_notes` (TEXT)
 - `created_at` (TIMESTAMP)
 
-### 4.7. Payment Table
+### 4.9. payments
 Tracks upfront consultation payments.
 - `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> Appointment, UNIQUE, Index)
-- `amount` (DECIMAL, NOT NULL)
-- `status` (VARCHAR, NOT NULL) - 'Pending', 'Paid', 'Refunded'
-- `transaction_ref` (VARCHAR, UNIQUE, NOT NULL)
-- `payment_date` (TIMESTAMP)
+- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
+- `amount` (DECIMAL)
+- `method` (VARCHAR) - 'UPI', 'CARD', 'WALLET', 'CASH', 'OTHER'
+- `status` (VARCHAR) - 'SUCCESS', 'FAILED', 'PENDING', 'REFUNDED'
+- `transaction_id` (VARCHAR, UNIQUE)
+- `transaction_time` (TIMESTAMP)
 - `created_at` (TIMESTAMP)
 
-### 4.8. Notification Table
-Logs system notifications.
+### 4.10. notifications
+Logs system alerts.
 - `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, Index)
-- `message` (TEXT, NOT NULL)
-- `type` (VARCHAR, NOT NULL) - 'Reminder', 'Cancellation', 'Refund', 'Community'
-- `is_read` (BOOLEAN, Default FALSE)
-- `created_at` (TIMESTAMP)
+- `user_id` (UUID, FK -> users, Index)
+- `appointment_id` (UUID, FK -> appointments, Index)
+- `type` (VARCHAR) - 'REMINDER', 'BOOKING', 'CANCELLATION', 'RESCHEDULED', 'OTHER'
+- `message` (TEXT)
+- `status` (VARCHAR) - 'UNREAD', 'READ'
+- `sent_at` (TIMESTAMP)
 
-### 4.9. MedicalRecord Table
-Stores intake health issues and AI advice.
+### 4.11. feedback
+Tracks doctor and hospital ratings.
 - `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> Appointment, UNIQUE, Index)
-- `complaint` (TEXT, NOT NULL)
-- `triage_advice` (TEXT)
-- `symptoms` (TEXT)
-- `notes` (TEXT)
-- `created_at` (TIMESTAMP)
-
-### 4.10. Feedback Table
-Tracks doctor and clinic ratings.
-- `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> Appointment, UNIQUE, Index)
-- `doctor_rating` (INTEGER, Check 1-5, NOT NULL)
-- `clinic_rating` (INTEGER, Check 1-5, NOT NULL)
-- `wait_time_rating` (INTEGER, Check 1-5, NOT NULL)
+- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
+- `doctor_rating` (INTEGER)
+- `hospital_rating` (INTEGER)
+- `waiting_time_rating` (INTEGER)
 - `comment` (TEXT)
+- `feedback_date` (TIMESTAMP)
+
+### 4.12. google_reviews
+Handles satisfied patient redirections.
+- `id` (UUID, PK)
+- `doctor_id` (UUID, FK -> doctors, Index)
+- `patient_id` (UUID, FK -> patients, Index)
+- `rating` (INTEGER)
+- `review` (TEXT)
 - `created_at` (TIMESTAMP)
 
-### 4.11. Reminder Table
-Triggers notifications before appointment times.
+### 4.13. customer_support_tickets
+Customer helpdesk.
 - `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> Appointment, Index)
-- `scheduled_time` (TIMESTAMP, NOT NULL)
+- `patient_id` (UUID, FK -> patients, Index)
+- `issue_description` (TEXT)
+- `status` (VARCHAR) - 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'
+- `created_at` (TIMESTAMP)
+- `updated_at` (TIMESTAMP)
+
+### 4.14. family_members
+Connects users to dependent patient profiles (required for Page 24).
+- `id` (UUID, PK)
+- `user_id` (UUID, FK -> users, Index)
+- `patient_id` (UUID, FK -> patients, UNIQUE, Index)
+- `relationship` (VARCHAR) - 'Wife', 'Son', 'Daughter', 'Mother', 'Father', 'Self'
+- `created_at` (TIMESTAMP)
+
+### 4.15. ivr_appointments
+Integrates bookings initiated via interactive voice systems (required for Page 21).
+- `id` (UUID, PK)
+- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
+- `ivr_app_id` (VARCHAR, UNIQUE, Index)
+- `status` (VARCHAR)
+- `created_at` (TIMESTAMP)
+
+### 4.16. reminders
+Triggers scheduled alerts before appointment times.
+- `id` (UUID, PK)
+- `appointment_id` (UUID, FK -> appointments, Index)
+- `scheduled_time` (TIMESTAMP)
 - `sent` (BOOLEAN, Default FALSE)
 - `created_at` (TIMESTAMP)
 
-### 4.12. SupportTicket Table
-Customer helpdesk.
+### 4.17. community_posts
+Enables patient-to-patient sharing (required for Page 22).
 - `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, Index)
-- `subject` (VARCHAR, NOT NULL)
-- `description` (TEXT, NOT NULL)
-- `status` (VARCHAR, NOT NULL) - 'Open', 'Resolved'
+- `user_id` (UUID, FK -> users, Index)
+- `title` (VARCHAR)
+- `content` (TEXT)
 - `created_at` (TIMESTAMP)
 
-### 4.13. FamilyMember Table
-Connects users to dependent patient profiles.
+### 4.18. comments
+Discussion replies (required for Page 22).
 - `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, Index)
-- `patient_id` (UUID, FK -> Patient, UNIQUE, Index)
-- `relationship` (VARCHAR, NOT NULL) - 'Wife', 'Son', 'Daughter', 'Mother', 'Father', 'Self'
+- `post_id` (UUID, FK -> community_posts, Index)
+- `user_id` (UUID, FK -> users, Index)
+- `content` (TEXT)
 - `created_at` (TIMESTAMP)
 
-### 4.14. IVRAppointment Table
-Integrates bookings initiated via interactive voice systems.
+### 4.19. reactions
+Likes and reactions on posts/comments (required for Page 22).
 - `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> Appointment, UNIQUE, Index)
-- `ivr_app_id` (VARCHAR, UNIQUE, NOT NULL, Index)
-- `status` (VARCHAR, NOT NULL) - 'Initiated', 'Completed', 'Expired'
-- `created_at` (TIMESTAMP)
-
-### 4.15. CommunityPost Table
-Enables patient-to-patient sharing.
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, Index)
-- `title` (VARCHAR, NOT NULL)
-- `content` (TEXT, NOT NULL)
-- `created_at` (TIMESTAMP)
-
-### 4.16. Comment Table
-Discussion replies.
-- `id` (UUID, PK)
-- `post_id` (UUID, FK -> CommunityPost, Index)
-- `user_id` (UUID, FK -> User, Index)
-- `content` (TEXT, NOT NULL)
-- `created_at` (TIMESTAMP)
-
-### 4.17. Reaction Table
-Likes and reactions on posts/comments.
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> User, Index)
-- `post_id` (UUID, FK -> CommunityPost, NULLABLE, Index)
-- `comment_id` (UUID, FK -> Comment, NULLABLE, Index)
-- `type` (VARCHAR, NOT NULL) - 'Like', 'Love', 'Support'
+- `user_id` (UUID, FK -> users, Index)
+- `post_id` (UUID, FK -> community_posts, NULLABLE, Index)
+- `comment_id` (UUID, FK -> comments, NULLABLE, Index)
+- `type` (VARCHAR) - 'LIKE', 'LOVE', 'SUPPORT'
 - `created_at` (TIMESTAMP)
 
 ---
@@ -232,184 +255,207 @@ Likes and reactions on posts/comments.
 ## 5. ER Diagram
 
 ### 5.1. Mermaid ER Code
-Copy and paste this code in [Mermaid Live Editor](https://mermaid.live) to visualize the schema:
-
 ```mermaid
 erDiagram
-    USER ||--o| DOCTOR : "has profile"
-    USER ||--o{ PATIENT : "registers"
-    USER ||--o{ FAMILY_MEMBER : "manages"
-    USER ||--o{ SUPPORT_TICKET : "opens"
-    USER ||--o{ COMMUNITY_POST : "creates"
-    USER ||--o{ COMMENT : "writes"
-    USER ||--o{ REACTION : "gives"
-    USER ||--o{ NOTIFICATION : "receives"
+    users ||--o| doctors : "has profile"
+    users ||--o{ patients : "registers"
+    users ||--o{ family_members : "manages"
+    users ||--o{ customer_support_tickets : "opens"
+    users ||--o{ community_posts : "creates"
+    users ||--o{ comments : "writes"
+    users ||--o{ reactions : "gives"
+    users ||--o{ notifications : "receives"
     
-    DOCTOR ||--o{ APPOINTMENT : "conducts"
-    DOCTOR ||--o{ APPOINTMENT_SLOT : "allocates"
-    DOCTOR }|--|| CLINIC : "practices_at"
+    doctors ||--o{ appointments : "conducts"
+    doctors ||--o{ doctor_availability : "allocates"
+    doctors ||--o{ google_reviews : "receives"
+    doctors }|--|| specializations : "has specialization"
     
-    PATIENT ||--o{ APPOINTMENT : "books"
-    PATIENT ||--o| FAMILY_MEMBER : "represented_by"
+    patients ||--o{ appointments : "books"
+    patients ||--o| family_members : "represented_by"
+    patients ||--o{ previous_medical_histories : "has clinical history"
+    patients ||--o{ google_reviews : "writes"
     
-    APPOINTMENT ||--|| APPOINTMENT_SLOT : "occupies"
-    APPOINTMENT ||--o| PAYMENT : "requires"
-    APPOINTMENT ||--o| MEDICAL_RECORD : "generates"
-    APPOINTMENT ||--o| FEEDBACK : "receives"
-    APPOINTMENT ||--o{ REMINDER : "triggers"
-    APPOINTMENT ||--o| IVR_APPOINTMENT : "linked_to"
+    appointments ||--|| doctor_availability : "occupies"
+    appointments ||--o| payments : "requires"
+    appointments ||--o| medical_records : "generates"
+    appointments ||--o| feedback : "receives"
+    appointments ||--o{ reminders : "triggers"
+    appointments ||--o| ivr_appointments : "linked_to"
+    appointments ||--o{ notifications : "triggers"
     
-    COMMUNITY_POST ||--o{ COMMENT : "has"
-    COMMUNITY_POST ||--o{ REACTION : "gets"
-    COMMENT ||--o{ REACTION : "gets"
+    community_posts ||--o{ comments : "has"
+    community_posts ||--o{ reactions : "gets"
+    comments ||--o{ reactions : "gets"
 ```
 
 ### 5.2. DBML (Database Markup Language)
-Copy and paste this schema code into [dbdiagram.io](https://dbdiagram.io):
-
 ```dbml
 Table users {
   id uuid [pk]
+  email varchar [unique, not null]
   mobile_number varchar [unique, not null]
-  name varchar
+  role varchar [not null]
   created_at timestamp
-  updated_at timestamp
 }
 
-Table clinics {
+Table specializations {
   id uuid [pk]
-  name varchar [not null]
-  address text
-  contact_number varchar
-  rating decimal
-  created_at timestamp
+  name varchar [unique, not null]
+  description text
 }
 
 Table doctors {
   id uuid [pk]
   user_id uuid [ref: > users.id, unique]
-  clinic_id uuid [ref: > clinics.id]
-  specialization varchar [not null]
-  experience_years integer [not null]
-  achievements text
-  services text[]
-  consultation_fee decimal [not null]
+  specialization_id uuid [ref: > specializations.id]
+  name varchar
+  qualification varchar
+  experience_years integer
+  clinic_name varchar
+  consultation_fee decimal
+  created_at timestamp
+}
+
+Table doctor_availability {
+  id uuid [pk]
+  doctor_id uuid [ref: > doctors.id]
+  slot_date date
+  day_of_week varchar
+  start_time time
+  end_time time
+  max_tokens integer
   created_at timestamp
 }
 
 Table patients {
   id uuid [pk]
   user_id uuid [ref: > users.id]
-  name varchar [not null]
-  age integer [not null]
-  sex varchar [not null]
-  weight decimal
-  created_at timestamp
-}
-
-Table family_members {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  patient_id uuid [ref: > patients.id, unique]
-  relationship varchar [not null]
-  created_at timestamp
-}
-
-Table appointment_slots {
-  id uuid [pk]
-  doctor_id uuid [ref: > doctors.id]
-  date date [not null]
-  start_time time [not null]
-  end_time time [not null]
-  max_capacity integer [default: 1]
-  booked_count integer [default: 0]
-  is_expired boolean [default: false]
+  first_name varchar
+  last_name varchar
+  gender varchar
+  date_of_birth date
+  profile_picture_url varchar
   created_at timestamp
 }
 
 Table appointments {
   id uuid [pk]
-  doctor_id uuid [ref: > doctors.id]
   patient_id uuid [ref: > patients.id]
-  slot_id uuid [ref: > appointment_slots.id]
-  token_number integer [not null]
-  type varchar [not null]
-  visit_type varchar [not null]
-  status varchar [not null]
-  queue_status varchar [not null]
-  expected_time timestamp
-  created_at timestamp
-}
-
-Table payments {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id, unique]
-  amount decimal [not null]
-  status varchar [not null]
-  transaction_ref varchar [unique]
-  payment_date timestamp
-  created_at timestamp
-}
-
-Table notifications {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  message text [not null]
-  type varchar [not null]
-  is_read boolean [default: false]
+  doctor_id uuid [ref: > doctors.id]
+  slot_id uuid [ref: > doctor_availability.id]
+  consultation_type varchar
+  appointment_date date
+  token_number integer
+  status varchar
+  current_consulting_count integer
+  expected_consulting_time time
+  payment_reference varchar
   created_at timestamp
 }
 
 Table medical_records {
   id uuid [pk]
   appointment_id uuid [ref: > appointments.id, unique]
-  complaint text [not null]
-  triage_advice text
-  symptoms text
-  notes text
+  complaint text
+  diagnosis text
+  prescription text
+  doctor_notes text
+  follow_up_advice text
   created_at timestamp
 }
 
-Table feedbacks {
+Table previous_medical_histories {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id]
+  ailments_history text
+  past_diagnoses text
+  medications_history text
+  allergies text
+  surgeries text
+  family_medical_history text
+  lifestyle_notes text
+  created_at timestamp
+}
+
+Table payments {
   id uuid [pk]
   appointment_id uuid [ref: > appointments.id, unique]
-  doctor_rating integer [not null]
-  clinic_rating integer [not null]
-  wait_time_rating integer [not null]
-  comment text
+  amount decimal
+  method varchar
+  status varchar
+  transaction_id varchar [unique]
+  transaction_time timestamp
   created_at timestamp
 }
 
-Table reminders {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id]
-  scheduled_time timestamp [not null]
-  sent boolean [default: false]
-  created_at timestamp
-}
-
-Table support_tickets {
+Table notifications {
   id uuid [pk]
   user_id uuid [ref: > users.id]
-  subject varchar [not null]
-  description text [not null]
-  status varchar [not null]
+  appointment_id uuid [ref: > appointments.id]
+  type varchar
+  message text
+  status varchar
+  sent_at timestamp
+}
+
+Table feedback {
+  id uuid [pk]
+  appointment_id uuid [ref: > appointments.id, unique]
+  doctor_rating integer
+  hospital_rating integer
+  waiting_time_rating integer
+  comment text
+  feedback_date timestamp
+}
+
+Table google_reviews {
+  id uuid [pk]
+  doctor_id uuid [ref: > doctors.id]
+  patient_id uuid [ref: > patients.id]
+  rating integer
+  review text
+  created_at timestamp
+}
+
+Table customer_support_tickets {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id]
+  issue_description text
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table family_members {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  patient_id uuid [ref: > patients.id, unique]
+  relationship varchar
   created_at timestamp
 }
 
 Table ivr_appointments {
   id uuid [pk]
   appointment_id uuid [ref: > appointments.id, unique]
-  ivr_app_id varchar [unique, not null]
-  status varchar [not null]
+  ivr_app_id varchar [unique]
+  status varchar
+  created_at timestamp
+}
+
+Table reminders {
+  id uuid [pk]
+  appointment_id uuid [ref: > appointments.id]
+  scheduled_time timestamp
+  sent boolean
   created_at timestamp
 }
 
 Table community_posts {
   id uuid [pk]
   user_id uuid [ref: > users.id]
-  title varchar [not null]
-  content text [not null]
+  title varchar
+  content text
   created_at timestamp
 }
 
@@ -417,7 +463,7 @@ Table comments {
   id uuid [pk]
   post_id uuid [ref: > community_posts.id]
   user_id uuid [ref: > users.id]
-  content text [not null]
+  content text
   created_at timestamp
 }
 
@@ -426,7 +472,7 @@ Table reactions {
   user_id uuid [ref: > users.id]
   post_id uuid [ref: > community_posts.id]
   comment_id uuid [ref: > comments.id]
-  type varchar [not null]
+  type varchar
   created_at timestamp
 }
 ```
