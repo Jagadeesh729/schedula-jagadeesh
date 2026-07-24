@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -46,14 +47,14 @@ export class DoctorAvailabilityController {
   @Patch(':id')
   async updateRecurring(
     @Request() req,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateRecurringAvailabilityDto,
   ) {
     return this.availabilityService.updateRecurring(req.user.id, id, dto);
   }
 
   @Delete(':id')
-  async deleteRecurring(@Request() req, @Param('id') id: string) {
+  async deleteRecurring(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
     return this.availabilityService.deleteRecurring(req.user.id, id);
   }
 

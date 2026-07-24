@@ -115,9 +115,26 @@ export class DoctorAvailabilityService {
 
   async getRecurring(userId: string): Promise<RecurringAvailability[]> {
     const doctor = await this.resolveDoctorProfile(userId);
-    return this.recurringRepo.find({
+    const slots = await this.recurringRepo.find({
       where: { doctor: { id: doctor.id } },
-      order: { weekday: 'ASC', startTime: 'ASC' },
+      order: { startTime: 'ASC' },
+    });
+
+    const dayOrder: Record<string, number> = {
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6,
+      Sunday: 7,
+    };
+
+    return slots.sort((a, b) => {
+      const orderA = dayOrder[a.weekday] || 99;
+      const orderB = dayOrder[b.weekday] || 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.startTime.localeCompare(b.startTime);
     });
   }
 
