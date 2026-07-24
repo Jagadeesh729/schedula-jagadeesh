@@ -1,0 +1,146 @@
+{
+  "passed": 28,
+  "failed": 0,
+  "results": [
+    {
+      "label": "T01 — No token → 401",
+      "pass": true,
+      "actual": 401
+    },
+    {
+      "label": "T02 — Patient token → 403",
+      "pass": true,
+      "actual": 403
+    },
+    {
+      "label": "T03 — Create valid recurring slot → 201",
+      "pass": true,
+      "actual": 201
+    },
+    {
+      "label": "T04 — Create second non-overlapping slot → 201",
+      "pass": true,
+      "actual": 201
+    },
+    {
+      "label": "T05 — Adjacent slot (11:00 after 09:00–11:00) → 201 (allowed)",
+      "pass": true,
+      "actual": 201
+    },
+    {
+      "label": "T06 — Overlapping slot → 409",
+      "pass": true,
+      "actual": 409
+    },
+    {
+      "label": "T07 — Exact duplicate slot → 409",
+      "pass": true,
+      "actual": 409
+    },
+    {
+      "label": "T08 — Invalid weekday → 400",
+      "pass": true,
+      "actual": 400
+    },
+    {
+      "label": "T09 — startTime >= endTime → 400",
+      "pass": true,
+      "actual": 400
+    },
+    {
+      "label": "T10 — Invalid time format (9:00 not HH:MM) → 400",
+      "pass": true,
+      "actual": 400
+    },
+    {
+      "label": "T11 — GET recurring → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "T12 — Returns array",
+      "pass": true,
+      "actual": "object"
+    },
+    {
+      "label": "T13 — Update own slot → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "T14 — Updated startTime reflects change",
+      "pass": true,
+      "actual": "08:00"
+    },
+    {
+      "label": "T15 — Update another doctor slot → 403",
+      "pass": true,
+      "actual": 403
+    },
+    {
+      "label": "T16 — Delete own slot → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "T17 — Create valid custom override → 201",
+      "pass": true,
+      "actual": 201
+    },
+    {
+      "label": "T18 — Invalid calendar date (2026-02-30) → 400",
+      "pass": true,
+      "actual": 400
+    },
+    {
+      "label": "T19 — Invalid calendar date (month 13) → 400",
+      "pass": true,
+      "actual": 400
+    },
+    {
+      "label": "T20 — GET by date with override → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "T21 — Returns source: custom",
+      "pass": true,
+      "actual": "custom"
+    },
+    {
+      "label": "T22 — Does not return recurring",
+      "pass": true,
+      "actual": "custom"
+    },
+    {
+      "label": "T23 — GET by date (Monday) with no override → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "T24 — Returns source: recurring",
+      "pass": true,
+      "actual": "recurring"
+    },
+    {
+      "label": "T25 — GET /date with no query param → 400",
+      "pass": true,
+      "actual": 400
+    },
+    {
+      "label": "R01 — GET /doctor/profile still works → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "R02 — PATCH /doctor/profile still works → 200",
+      "pass": true,
+      "actual": 200
+    },
+    {
+      "label": "R03 — Login with wrong creds still returns 401",
+      "pass": true,
+      "actual": 401
+    }
+  ]
+}

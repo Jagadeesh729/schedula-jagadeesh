@@ -1,505 +1,647 @@
-# Schedula (schedula-jagadeesh) - Backend Project Setup & System Design
+# Schedula Backend (`schedula-jagadeesh`)
 
-Schedula is a healthcare booking and live queue management system designed to resolve clinic wait times, rigid scheduling, and doctor-patient pre-consultation information gaps. 
+Schedula is a robust, production-grade healthcare booking and availability management API built with **NestJS**, **TypeScript**, **TypeORM**, and **PostgreSQL**.
 
-This repository contains the **Day 1 System Design, Database Architecture, and NestJS Project Setup**, aligned with both the core wireframe requirements and the group's reference structure.
-
----
-
-## 1. Project Overview
-Schedula solves high visiting and waiting times, rigid booking structures, and lack of pre-consultation clarity. Key modules:
-1. **Core Scheduling & Dynamic Allocation Engine**: Date/time picking, slot expiration routing, and IVR App ID integrations.
-2. **Live Queue Tracking & Upfront Payments**: Upfront fee transactions and active queue calculations (expected consultation time).
-3. **Pre-Consultation Data Intake & AI Chat**: Intake forms, automatic triage advice, and a Friends & Family index for 1-click booking.
-4. **Post-Visit Retention Loops**: Multi-tier rating feedbacks, daily re-engagement notifications, and Google Business redirection.
+This repository implements the core backend infrastructure including authentication, role-based authorization, doctor/patient profile onboarding, and the Day 4 Doctor Availability Engine (supporting recurring weekly schedules and custom date overrides).
 
 ---
 
-## 2. Tech Stack
-- **Backend Framework**: [NestJS](https://nestjs.com/) (v11.x)
-- **Language**: [TypeScript](https://www.typescriptlang.org/) (v5.x)
-- **Platform**: [Node.js](https://nodejs.org/) (v24.x)
-- **Package Manager**: [npm](https://www.npmjs.com/) (v11.x)
-- **Database (Target)**: PostgreSQL
-- **ORM (Target)**: TypeORM
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Architecture](#project-architecture)
+- [Folder Structure](#folder-structure)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Database Setup & Migrations](#database-setup--migrations)
+- [Running the Project](#running-the-project)
+- [API Reference](#api-reference)
+  - [Authentication (`/auth`)](#1-authentication-auth)
+  - [Doctor Profile (`/doctor/profile`)](#2-doctor-profile-doctorprofile)
+  - [Patient Profile (`/patient/profile`)](#3-patient-profile-patientprofile)
+  - [Doctor Availability (`/doctor/availability`)](#4-doctor-availability-doctoravailability)
+- [Validation Architecture](#validation-architecture)
+- [Authorization & Security](#authorization--security)
+- [Database Schema](#database-schema)
+- [Testing & Verification](#testing--verification)
+- [Engineering Decisions](#engineering-decisions)
+- [Future Improvements](#future-improvements)
+- [Conclusion](#conclusion)
 
 ---
 
-## 3. Folder Structure
-The project uses the standard NestJS architecture. No custom controllers, services, or modules have been added yet to preserve clean, default structure.
+## Overview
+
+Schedula simplifies doctor-patient interactions by replacing rigid clinic booking systems with dynamic availability management, instant slot validation, and role-based clinical onboarding. 
+
+The backend is built around a clean, layered NestJS architecture enforcing separation of concerns, strong domain validation, idempotent database migrations, and explicit resource ownership boundaries.
+
+---
+
+## Features
+
+### Authentication & Authorization
+* **JWT Authentication**: User registration (`/auth/signup`) and secure authentication (`/auth/login`) issuing signed JWT tokens.
+* **Bcrypt Hashing**: Secure password hashing prior to persistence.
+* **Role-Based Access Control (RBAC)**: `JwtAuthGuard` and `RolesGuard` protecting endpoints based on `@Roles('DOCTOR')` and `@Roles('PATIENT')`.
+
+### Profile Onboarding & Management
+* **Doctor Profile Management**: Professional onboarding (`POST`, `GET`, `PATCH` under `/doctor/profile`) covering specialization, experience, qualification, consultation fees, and bio.
+* **Patient Profile Management**: Clinical intake onboarding (`POST`, `GET`, `PATCH` under `/patient/profile`) recording age, gender, contact details, and basic health information.
+
+### Doctor Availability System (Day 4 Core)
+* **Weekly Recurring Schedules**: Configure recurring daily slots (`POST`, `GET`, `PATCH`, `DELETE` under `/doctor/availability`) for specific weekdays (`Monday`–`Sunday`).
+* **Custom Date Overrides**: Override weekly recurring availability on specific calendar dates (`POST /doctor/availability/override`) for holidays or special clinic hours.
+* **Dynamic Date Availability Lookup**: Query available slots for any specific date (`GET /doctor/availability/date?date=YYYY-MM-DD`). Overrides automatically take precedence over recurring schedules.
+* **Interval Overlap Validation**: Stateless algorithm preventing overlapping slot creation while permitting valid adjacent slots (e.g., `09:00–10:00` followed by `10:00–11:00`).
+* **Calendar Date Verification**: Prevents invalid calendar date registration (e.g., rejecting non-existent dates like `2026-02-30`).
+* **Resource Ownership Enforcement**: Doctors can only modify or delete availability slots belonging directly to their own profile.
+
+### Database & Reliability
+* **Code-First Migrations**: Idempotent TypeORM migrations executing automatically on server startup.
+* **Strict Schema Rules**: Native PostgreSQL `TIME` and `DATE` columns, foreign keys with `ON DELETE CASCADE`, composite `UNIQUE` constraints, and performance indexes.
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Version |
+|---|---|---|
+| **Framework** | [NestJS](https://nestjs.com/) | `^11.0.1` |
+| **Language** | [TypeScript](https://www.typescriptlang.org/) | `^5.7.3` |
+| **Runtime** | [Node.js](https://nodejs.org/) | `v20+` / `v24+` |
+| **Database** | [PostgreSQL](https://www.postgresql.org/) | `v17` |
+| **ORM** | [TypeORM](https://typeorm.io/) | `^1.1.0` |
+| **Authentication** | Passport JWT (`passport-jwt`, `@nestjs/jwt`) | `^11.0.2` |
+| **Password Security**| `bcrypt` | `^6.0.0` |
+| **Validation** | `class-validator`, `class-transformer` | `^0.15.1` |
+
+---
+
+## Project Architecture
+
+The application implements a 4-tier clean architecture:
+
+```text
+HTTP Client ──► Controller ──► Service ──► Repository / Entity ──► PostgreSQL DB
+```
+
+1. **Controller Layer**: Handles HTTP requests, path parameters, DTO mapping, and delegates execution to the service layer. Contains no business or database logic.
+2. **Service Layer**: Contains all domain logic, interval arithmetic, calendar date reconstruction, ownership verification, and repository calls.
+3. **Repository / Entity Layer**: TypeORM repositories managing database operations for underlying PostgreSQL tables.
+4. **Database Layer**: PostgreSQL database operating with explicit schema rules, indexes, and constraints (`synchronize: false`).
+
+---
+
+## Folder Structure
 
 ```text
 schedula-jagadeesh/
-├── dist/                   # Compiled JavaScript output
-├── node_modules/           # Project dependencies
-├── src/                    # Source files
-│   ├── app.controller.spec.ts  # Unit tests for the AppController
-│   ├── app.controller.ts       # App entry controller
-│   ├── app.module.ts           # Root module of the application
-│   ├── app.service.ts          # Core application service
-│   └── main.ts                 # Application entry point (bootstrap)
-├── test/                   # Integration tests
-│   ├── app.e2e-spec.ts         # End-to-end testing
-│   └── jest-e2e.json           # Jest E2E configuration
-├── .prettierrc             # Prettier code formatting rules
-├── eslint.config.mjs       # ESLint linting configuration
-├── nest-cli.json           # NestJS CLI configuration
-├── package.json            # npm package dependencies and scripts
-├── tsconfig.build.json     # TypeScript build compiler options
-├── tsconfig.json           # Main TypeScript configuration
-└── README.md               # Main project documentation
-```
-
-### Folder Explanations:
-- **`src/`**: Contains the main application source code.
-  - **`app.module.ts`**: The root module of the NestJS application where all other modules, controllers, and services are declared.
-  - **`app.controller.ts`**: Handles incoming HTTP requests and delegates tasks to service layer.
-  - **`app.service.ts`**: Contains basic business logic for the app.
-  - **`main.ts`**: Uses `NestFactory` to bootstrap the application and make it listen on port `3000`.
-- **`test/`**: Contains E2E tests to verify system routes.
-- **`dist/`**: Contains built files created by compiling TypeScript to JavaScript.
-- **`nest-cli.json`**: Specifies CLI options, e.g., script entry points and build tools.
-
----
-
-## 4. Database Overview & Schema Design
-To support the application's workflows, the PostgreSQL database is designed with **18 core entities**, aligning the group reference diagram's table splits with full wireframe screen coverage (including Friends & Family, IVR, and Community features) in a normalized, 3NF-compliant structure.
-
-### 4.1. users
-Stores authentication details for users.
-- `id` (UUID, PK)
-- `email` (VARCHAR, UNIQUE, NOT NULL, Index)
-- `mobile_number` (VARCHAR, UNIQUE, NOT NULL, Index)
-- `role` (VARCHAR) - 'PATIENT', 'DOCTOR'
-- `created_at` (TIMESTAMP)
-
-### 4.2. doctors
-Stores metadata for doctors practicing in clinics.
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> users, UNIQUE, Index)
-- `specialization_id` (UUID, FK -> specializations, Index)
-- `name` (VARCHAR)
-- `qualification` (VARCHAR)
-- `experience_years` (INTEGER)
-- `clinic_name` (VARCHAR)
-- `consultation_fee` (DECIMAL)
-- `created_at` (TIMESTAMP)
-
-### 4.3. specializations
-Lookup table for doctor specializations (aligned with reference diagram).
-- `id` (UUID, PK)
-- `name` (VARCHAR, UNIQUE, NOT NULL)
-- `description` (TEXT)
-
-### 4.4. doctor_availability
-Defines doctors' bookable calendar time slots (aligned with reference diagram).
-- `id` (UUID, PK)
-- `doctor_id` (UUID, FK -> doctors, Index)
-- `slot_date` (DATE)
-- `day_of_week` (VARCHAR) - 'MONDAY', 'TUESDAY', etc.
-- `start_time` (TIME)
-- `end_time` (TIME)
-- `max_tokens` (INTEGER)
-- `created_at` (TIMESTAMP)
-
-### 4.5. patients
-Stores clinical profile data.
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> users, Index)
-- `first_name` (VARCHAR)
-- `last_name` (VARCHAR)
-- `gender` (VARCHAR)
-- `date_of_birth` (DATE)
-- `profile_picture_url` (VARCHAR)
-- `created_at` (TIMESTAMP)
-
-### 4.6. appointments
-Records consultation bookings.
-- `id` (UUID, PK)
-- `patient_id` (UUID, FK -> patients, Index)
-- `doctor_id` (UUID, FK -> doctors, Index)
-- `slot_id` (UUID, FK -> doctor_availability, Index)
-- `consultation_type` (VARCHAR) - 'ONLINE', 'OFFLINE'
-- `appointment_date` (DATE)
-- `token_number` (INTEGER)
-- `status` (VARCHAR) - 'BOOKED', 'COMPLETED', 'CANCELLED', 'RESCHEDULED', 'PENDING'
-- `current_consulting_count` (INTEGER)
-- `expected_consulting_time` (TIME)
-- `payment_reference` (VARCHAR, NULLABLE)
-- `created_at` (TIMESTAMP)
-
-### 4.7. medical_records
-Stores consultation findings (normalized into a separate table linked 1-to-1 with appointments).
-- `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
-- `complaint` (TEXT)
-- `diagnosis` (TEXT)
-- `prescription` (TEXT)
-- `doctor_notes` (TEXT, NULLABLE)
-- `follow_up_advice` (TEXT, NULLABLE)
-- `created_at` (TIMESTAMP)
-
-### 4.8. previous_medical_histories
-Stores patient historical profiles (normalized into a separate table linked to patients).
-- `id` (UUID, PK)
-- `patient_id` (UUID, FK -> patients, Index)
-- `ailments_history` (TEXT)
-- `past_diagnoses` (TEXT)
-- `medications_history` (TEXT)
-- `allergies` (TEXT)
-- `surgeries` (TEXT)
-- `family_medical_history` (TEXT)
-- `lifestyle_notes` (TEXT)
-- `created_at` (TIMESTAMP)
-
-### 4.9. payments
-Tracks upfront consultation payments.
-- `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
-- `amount` (DECIMAL)
-- `method` (VARCHAR) - 'UPI', 'CARD', 'WALLET', 'CASH', 'OTHER'
-- `status` (VARCHAR) - 'SUCCESS', 'FAILED', 'PENDING', 'REFUNDED'
-- `transaction_id` (VARCHAR, UNIQUE)
-- `transaction_time` (TIMESTAMP)
-- `created_at` (TIMESTAMP)
-
-### 4.10. notifications
-Logs system alerts.
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> users, Index)
-- `appointment_id` (UUID, FK -> appointments, Index)
-- `type` (VARCHAR) - 'REMINDER', 'BOOKING', 'CANCELLATION', 'RESCHEDULED', 'OTHER'
-- `message` (TEXT)
-- `status` (VARCHAR) - 'UNREAD', 'READ'
-- `sent_at` (TIMESTAMP)
-
-### 4.11. feedback
-Tracks doctor and hospital ratings.
-- `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
-- `doctor_rating` (INTEGER)
-- `hospital_rating` (INTEGER)
-- `waiting_time_rating` (INTEGER)
-- `comment` (TEXT)
-- `feedback_date` (TIMESTAMP)
-
-### 4.12. google_reviews
-Handles satisfied patient redirections.
-- `id` (UUID, PK)
-- `doctor_id` (UUID, FK -> doctors, Index)
-- `patient_id` (UUID, FK -> patients, Index)
-- `rating` (INTEGER)
-- `review` (TEXT)
-- `created_at` (TIMESTAMP)
-
-### 4.13. customer_support_tickets
-Customer helpdesk.
-- `id` (UUID, PK)
-- `patient_id` (UUID, FK -> patients, Index)
-- `issue_description` (TEXT)
-- `status` (VARCHAR) - 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'
-- `created_at` (TIMESTAMP)
-- `updated_at` (TIMESTAMP)
-
-### 4.14. family_members
-Connects users to dependent patient profiles (required for Page 24).
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> users, Index)
-- `patient_id` (UUID, FK -> patients, UNIQUE, Index)
-- `relationship` (VARCHAR) - 'Wife', 'Son', 'Daughter', 'Mother', 'Father', 'Self'
-- `created_at` (TIMESTAMP)
-
-### 4.15. ivr_appointments
-Integrates bookings initiated via interactive voice systems (required for Page 21).
-- `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> appointments, UNIQUE, Index)
-- `ivr_app_id` (VARCHAR, UNIQUE, Index)
-- `status` (VARCHAR)
-- `created_at` (TIMESTAMP)
-
-### 4.16. reminders
-Triggers scheduled alerts before appointment times.
-- `id` (UUID, PK)
-- `appointment_id` (UUID, FK -> appointments, Index)
-- `scheduled_time` (TIMESTAMP)
-- `sent` (BOOLEAN, Default FALSE)
-- `created_at` (TIMESTAMP)
-
-### 4.17. community_posts
-Enables patient-to-patient sharing (required for Page 22).
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> users, Index)
-- `title` (VARCHAR)
-- `content` (TEXT)
-- `created_at` (TIMESTAMP)
-
-### 4.18. comments
-Discussion replies (required for Page 22).
-- `id` (UUID, PK)
-- `post_id` (UUID, FK -> community_posts, Index)
-- `user_id` (UUID, FK -> users, Index)
-- `content` (TEXT)
-- `created_at` (TIMESTAMP)
-
-### 4.19. reactions
-Likes and reactions on posts/comments (required for Page 22).
-- `id` (UUID, PK)
-- `user_id` (UUID, FK -> users, Index)
-- `post_id` (UUID, FK -> community_posts, NULLABLE, Index)
-- `comment_id` (UUID, FK -> comments, NULLABLE, Index)
-- `type` (VARCHAR) - 'LIKE', 'LOVE', 'SUPPORT'
-- `created_at` (TIMESTAMP)
-
----
-
-## 5. ER Diagram
-
-### 5.1. Mermaid ER Code
-```mermaid
-erDiagram
-    users ||--o| doctors : "has profile"
-    users ||--o{ patients : "registers"
-    users ||--o{ family_members : "manages"
-    users ||--o{ customer_support_tickets : "opens"
-    users ||--o{ community_posts : "creates"
-    users ||--o{ comments : "writes"
-    users ||--o{ reactions : "gives"
-    users ||--o{ notifications : "receives"
-    
-    doctors ||--o{ appointments : "conducts"
-    doctors ||--o{ doctor_availability : "allocates"
-    doctors ||--o{ google_reviews : "receives"
-    doctors }|--|| specializations : "has specialization"
-    
-    patients ||--o{ appointments : "books"
-    patients ||--o| family_members : "represented_by"
-    patients ||--o{ previous_medical_histories : "has clinical history"
-    patients ||--o{ google_reviews : "writes"
-    
-    appointments ||--|| doctor_availability : "occupies"
-    appointments ||--o| payments : "requires"
-    appointments ||--o| medical_records : "generates"
-    appointments ||--o| feedback : "receives"
-    appointments ||--o{ reminders : "triggers"
-    appointments ||--o| ivr_appointments : "linked_to"
-    appointments ||--o{ notifications : "triggers"
-    
-    community_posts ||--o{ comments : "has"
-    community_posts ||--o{ reactions : "gets"
-    comments ||--o{ reactions : "gets"
-```
-
-### 5.2. DBML (Database Markup Language)
-```dbml
-Table users {
-  id uuid [pk]
-  email varchar [unique, not null]
-  mobile_number varchar [unique, not null]
-  role varchar [not null]
-  created_at timestamp
-}
-
-Table specializations {
-  id uuid [pk]
-  name varchar [unique, not null]
-  description text
-}
-
-Table doctors {
-  id uuid [pk]
-  user_id uuid [ref: > users.id, unique]
-  specialization_id uuid [ref: > specializations.id]
-  name varchar
-  qualification varchar
-  experience_years integer
-  clinic_name varchar
-  consultation_fee decimal
-  created_at timestamp
-}
-
-Table doctor_availability {
-  id uuid [pk]
-  doctor_id uuid [ref: > doctors.id]
-  slot_date date
-  day_of_week varchar
-  start_time time
-  end_time time
-  max_tokens integer
-  created_at timestamp
-}
-
-Table patients {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  first_name varchar
-  last_name varchar
-  gender varchar
-  date_of_birth date
-  profile_picture_url varchar
-  created_at timestamp
-}
-
-Table appointments {
-  id uuid [pk]
-  patient_id uuid [ref: > patients.id]
-  doctor_id uuid [ref: > doctors.id]
-  slot_id uuid [ref: > doctor_availability.id]
-  consultation_type varchar
-  appointment_date date
-  token_number integer
-  status varchar
-  current_consulting_count integer
-  expected_consulting_time time
-  payment_reference varchar
-  created_at timestamp
-}
-
-Table medical_records {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id, unique]
-  complaint text
-  diagnosis text
-  prescription text
-  doctor_notes text
-  follow_up_advice text
-  created_at timestamp
-}
-
-Table previous_medical_histories {
-  id uuid [pk]
-  patient_id uuid [ref: > patients.id]
-  ailments_history text
-  past_diagnoses text
-  medications_history text
-  allergies text
-  surgeries text
-  family_medical_history text
-  lifestyle_notes text
-  created_at timestamp
-}
-
-Table payments {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id, unique]
-  amount decimal
-  method varchar
-  status varchar
-  transaction_id varchar [unique]
-  transaction_time timestamp
-  created_at timestamp
-}
-
-Table notifications {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  appointment_id uuid [ref: > appointments.id]
-  type varchar
-  message text
-  status varchar
-  sent_at timestamp
-}
-
-Table feedback {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id, unique]
-  doctor_rating integer
-  hospital_rating integer
-  waiting_time_rating integer
-  comment text
-  feedback_date timestamp
-}
-
-Table google_reviews {
-  id uuid [pk]
-  doctor_id uuid [ref: > doctors.id]
-  patient_id uuid [ref: > patients.id]
-  rating integer
-  review text
-  created_at timestamp
-}
-
-Table customer_support_tickets {
-  id uuid [pk]
-  patient_id uuid [ref: > patients.id]
-  issue_description text
-  status varchar
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table family_members {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  patient_id uuid [ref: > patients.id, unique]
-  relationship varchar
-  created_at timestamp
-}
-
-Table ivr_appointments {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id, unique]
-  ivr_app_id varchar [unique]
-  status varchar
-  created_at timestamp
-}
-
-Table reminders {
-  id uuid [pk]
-  appointment_id uuid [ref: > appointments.id]
-  scheduled_time timestamp
-  sent boolean
-  created_at timestamp
-}
-
-Table community_posts {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  title varchar
-  content text
-  created_at timestamp
-}
-
-Table comments {
-  id uuid [pk]
-  post_id uuid [ref: > community_posts.id]
-  user_id uuid [ref: > users.id]
-  content text
-  created_at timestamp
-}
-
-Table reactions {
-  id uuid [pk]
-  user_id uuid [ref: > users.id]
-  post_id uuid [ref: > community_posts.id]
-  comment_id uuid [ref: > comments.id]
-  type varchar
-  created_at timestamp
-}
+├── dist/                               # Compiled JavaScript build output
+├── src/                                # Source code
+│   ├── app.controller.ts               # Base application controller
+│   ├── app.module.ts                   # Root application module
+│   ├── app.service.ts                  # Base application service
+│   ├── main.ts                         # Application bootstrap entry point
+│   ├── auth/                           # Authentication module
+│   │   ├── auth.controller.ts
+│   │   ├── auth.module.ts
+│   │   ├── auth.service.ts
+│   │   ├── jwt.strategy.ts
+│   │   └── dto/
+│   │       ├── login.dto.ts
+│   │       └── signup.dto.ts
+│   ├── doctor/                         # Doctor Profile & Availability module
+│   │   ├── doctor.controller.ts
+│   │   ├── doctor.module.ts
+│   │   ├── doctor.service.ts
+│   │   ├── doctor-availability.controller.ts
+│   │   ├── doctor-availability.service.ts
+│   │   ├── dto/
+│   │   │   ├── create-doctor-profile.dto.ts
+│   │   │   ├── update-doctor-profile.dto.ts
+│   │   │   ├── create-recurring-availability.dto.ts
+│   │   │   ├── update-recurring-availability.dto.ts
+│   │   │   └── create-custom-availability.dto.ts
+│   │   ├── entities/
+│   │   │   ├── doctor-profile.entity.ts
+│   │   │   ├── recurring-availability.entity.ts
+│   │   │   └── custom-availability.entity.ts
+│   │   └── enums/
+│   │       └── weekday.enum.ts
+│   ├── patient/                        # Patient Profile module
+│   │   ├── patient.controller.ts
+│   │   ├── patient.module.ts
+│   │   ├── patient.service.ts
+│   │   ├── dto/
+│   │   │   ├── create-patient-profile.dto.ts
+│   │   │   └── update-patient-profile.dto.ts
+│   │   └── entities/
+│   │       └── patient-profile.entity.ts
+│   ├── users/                          # User entity module
+│   │   ├── users.module.ts
+│   │   ├── users.service.ts
+│   │   └── entities/
+│   │       └── user.entity.ts
+│   ├── guards/                         # Security Guards
+│   │   ├── jwt-auth.guard.ts
+│   │   └── roles.guard.ts
+│   ├── decorators/                     # Custom Decorators
+│   │   └── roles.decorator.ts
+│   └── migrations/                     # Database Migration Scripts
+│       ├── 1784700000001-CreateDoctorProfile.ts
+│       ├── 1784700000002-CreatePatientProfile.ts
+│       └── 1784800000001-CreateDoctorAvailability.ts
+├── run-tests.js                        # Complete 28-scenario integration test suite
+├── test-availability.js                # Day 4 availability verification test script
+├── package.json                        # Project metadata and dependencies
+├── tsconfig.json                       # TypeScript compiler configuration
+└── README.md                           # Documentation
 ```
 
 ---
 
-## 6. Installation & Execution
-To get the empty NestJS template running locally:
+## Installation
 
+### Prerequisites
+* **Node.js**: `v20.x` or higher
+* **PostgreSQL**: `v17.x` running locally or accessible via network URL
+* **npm**: `v10.x` or higher
+
+### Steps
+
+1. **Clone Repository**:
+   ```bash
+   git clone <REPOSITORY_URL>
+   cd schedula-jagadeesh
+   ```
+
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables**:
+   Create a `.env` file in the project root (see [Environment Variables](#environment-variables)).
+
+4. **Verify Database Connection**:
+   Ensure PostgreSQL is running and the target database exists.
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the project root with the following configuration:
+
+```env
+# PostgreSQL Database Connection URL
+DATABASE_URL=postgresql://postgres:postgres123@localhost:5432/schedula
+
+# JWT Secret Key for signing tokens
+JWT_SECRET=super_secret_key_for_jwt
+
+# Application HTTP Listening Port
+PORT=3000
+```
+
+| Variable | Description | Default / Example | Required |
+|---|---|---|---|
+| `DATABASE_URL` | Full PostgreSQL connection string | `postgresql://postgres:postgres123@localhost:5432/schedula` | Yes |
+| `JWT_SECRET` | Secret key used for signing & verifying JWTs | `super_secret_key_for_jwt` | Yes |
+| `PORT` | Listening port for NestJS server | `3000` | No (Defaults to `3000`) |
+
+---
+
+## Database Setup & Migrations
+
+The project follows a **strict migration strategy**:
+
+* **`synchronize: false`**: Automatic schema synchronization is disabled in `app.module.ts` to prevent accidental data loss or implicit table alterations in development and production environments.
+* **`migrationsRun: true`**: TypeORM automatically executes pending migration files listed in `app.module.ts` upon application bootstrap.
+
+### Executing Migrations
+When starting the server (`npm run start:dev` or `node dist/main`), TypeORM automatically checks and runs all unapplied migrations:
+1. `CreateDoctorProfile1784700000001`
+2. `CreatePatientProfile1784700000002`
+3. `CreateDoctorAvailability1784800000001`
+
+---
+
+## Running the Project
+
+### Development Server (Watch Mode)
 ```bash
-# Clone and open directory
-cd C:\Users\kunda\Downloads\schedula-jagadeesh
-
-# Install dependencies
-npm install
-
-# Run the dev server
 npm run start:dev
+```
 
-# Build the project
+### Production Build
+```bash
 npm run build
 ```
 
+### Production Server
+```bash
+node dist/main
+```
+
 ---
 
-## 7. Future Scope
-1. **Module 1 (Scheduling)**: Write NestJS core modules (`SchedulingModule`, `SlotModule`) with controllers and queries filtering time slots by range and status.
-2. **Module 2 (Queue & Payment)**: Implement transactional database locks to increment queue tokens concurrently and compute expected waiting times using running averages.
-3. **Module 3 (Intake & Chatbot)**: Configure intake schemas, integrate an LLM interface (Gemini/OpenAI API) for home triage recommendations, and map family profiles.
-4. **Module 4 (Feedback & Retention)**: Implement Star Ratings endpoints, CronJobs checking in on patients after 24 hours, and Deep-link redirect helpers.
+## API Reference
+
+### 1. Authentication (`/auth`)
+
+#### `POST /auth/signup`
+* **Authorization**: Public
+* **Purpose**: Register a new user (`DOCTOR` or `PATIENT`).
+* **Request Body**:
+  ```json
+  {
+    "name": "Dr. Jane Doe",
+    "email": "jane.doe@clinic.com",
+    "password": "Password123!",
+    "role": "DOCTOR"
+  }
+  ```
+* **Response (`201 Created`)**:
+  ```json
+  {
+    "id": "u472b5a1-...",
+    "name": "Dr. Jane Doe",
+    "email": "jane.doe@clinic.com",
+    "role": "DOCTOR",
+    "createdAt": "2026-07-23T12:00:00.000Z"
+  }
+  ```
+
+#### `POST /auth/login`
+* **Authorization**: Public
+* **Purpose**: Authenticate user credentials and receive a JWT Bearer token.
+* **Request Body**:
+  ```json
+  {
+    "email": "jane.doe@clinic.com",
+    "password": "Password123!"
+  }
+  ```
+* **Response (`200 OK`)**:
+  ```json
+  {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+  }
+  ```
+
+---
+
+### 2. Doctor Profile (`/doctor/profile`)
+
+#### `POST /doctor/profile`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: Create doctor profile onboarding data.
+* **Request Body**:
+  ```json
+  {
+    "fullName": "Dr. Jane Doe",
+    "specialization": "Cardiology",
+    "experience": 8,
+    "qualification": "MD, FACC",
+    "consultationFee": 750.00,
+    "availability": "Mon-Fri",
+    "profileDetails": "Cardiologist with 8 years of clinical experience."
+  }
+  ```
+* **Response (`201 Created`)**: Returns created `DoctorProfile` entity object.
+
+#### `GET /doctor/profile`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: Retrieve profile details for the authenticated doctor.
+* **Response (`200 OK`)**: Returns `DoctorProfile` entity object.
+
+#### `PATCH /doctor/profile`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: Update specific profile fields for the authenticated doctor.
+* **Response (`200 OK`)**: Returns updated `DoctorProfile` entity object.
+
+---
+
+### 3. Patient Profile (`/patient/profile`)
+
+#### `POST /patient/profile`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`PATIENT` role required)
+* **Purpose**: Create patient clinical intake profile.
+* **Request Body**:
+  ```json
+  {
+    "fullName": "John Smith",
+    "age": 34,
+    "gender": "Male",
+    "contactDetails": "+15551234567",
+    "basicHealthInformation": "No known allergies. Mild hypertension."
+  }
+  ```
+* **Response (`201 Created`)**: Returns created `PatientProfile` entity object.
+
+#### `GET /patient/profile`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`PATIENT` role required)
+* **Purpose**: Retrieve profile details for the authenticated patient.
+* **Response (`200 OK`)**: Returns `PatientProfile` entity object.
+
+#### `PATCH /patient/profile`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`PATIENT` role required)
+* **Purpose**: Update specific patient intake details.
+* **Response (`200 OK`)**: Returns updated `PatientProfile` entity object.
+
+---
+
+### 4. Doctor Availability (`/doctor/availability`)
+
+#### `POST /doctor/availability`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: Add a recurring weekly availability slot.
+* **Request Body**:
+  ```json
+  {
+    "weekday": "Monday",
+    "startTime": "09:00",
+    "endTime": "11:00"
+  }
+  ```
+* **Response (`201 Created`)**:
+  ```json
+  {
+    "id": "c89f10a2-...",
+    "weekday": "Monday",
+    "startTime": "09:00",
+    "endTime": "11:00",
+    "createdAt": "2026-07-23T12:30:00.000Z",
+    "updatedAt": "2026-07-23T12:30:00.000Z"
+  }
+  ```
+
+#### `GET /doctor/availability`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: List all recurring weekly slots for the authenticated doctor.
+* **Response (`200 OK`)**: Array of `RecurringAvailability` objects.
+
+#### `GET /doctor/availability/date?date=YYYY-MM-DD`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: Query availability slots for a specific date. Custom overrides take precedence over recurring schedules.
+* **Response (`200 OK`)**:
+  ```json
+  {
+    "source": "custom",
+    "slots": [
+      {
+        "id": "e12089b3-...",
+        "date": "2026-08-04",
+        "startTime": "10:00",
+        "endTime": "12:00"
+      }
+    ]
+  }
+  ```
+
+#### `PATCH /doctor/availability/:id`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required; ownership checked)
+* **Purpose**: Update an existing recurring availability slot.
+* **Request Body**:
+  ```json
+  {
+    "startTime": "08:00",
+    "endTime": "10:00"
+  }
+  ```
+* **Response (`200 OK`)**: Returns updated `RecurringAvailability` object.
+
+#### `DELETE /doctor/availability/:id`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required; ownership checked)
+* **Purpose**: Delete a recurring availability slot.
+* **Response (`200 OK`)**: Returns deleted `RecurringAvailability` object.
+
+#### `POST /doctor/availability/override`
+* **Authorization**: `Bearer <JWT_TOKEN>` (`DOCTOR` role required)
+* **Purpose**: Create a custom availability override for a specific date.
+* **Request Body**:
+  ```json
+  {
+    "date": "2026-08-04",
+    "startTime": "10:00",
+    "endTime": "12:00"
+  }
+  ```
+* **Response (`201 Created`)**: Returns created `CustomAvailability` object.
+
+---
+
+## Validation Architecture
+
+The application uses a **two-tier validation architecture**:
+
+### 1. DTO-Level Validation (Syntactic Boundary)
+Handled automatically at the framework boundary by NestJS's global `ValidationPipe` (`whitelist: true`, `transform: true`):
+* **`@IsEnum(Weekday)`**: Restricts `weekday` fields to valid enum values (`Monday` through `Sunday`).
+* **`@Matches(/^([0-1]\d|2[0-3]):[0-5]\d$/)`**: Restricts time strings to `HH:MM` 24-hour format.
+* **`@Matches(/^\d{4}-\d{2}-\d{2}$/)`**: Restricts date strings to `YYYY-MM-DD` format.
+
+### 2. Service-Level Validation (Semantic Domain)
+Handled inside `DoctorAvailabilityService` private helper functions:
+* **`validateTimeRange(startTime, endTime)`**: Converts times to minutes from midnight (`timeToMinutes`) and throws `BadRequestException` if `startTime >= endTime`.
+* **`checkOverlap(existingSlots, newStart, newEnd)`**: Evaluates `newStart < existingEnd && existingStart < newEnd`. Throws `ConflictException` (`409`) on overlap while permitting adjacent boundaries.
+* **`validateDate(date)`**: Reconstructs parsed year/month/day parameters into a JavaScript `Date` to catch invalid dates (e.g. throwing `BadRequestException` for `2026-02-30`).
+* **`resolveDoctorProfile(userId)`**: Confirms doctor profile existence, throwing `NotFoundException` (`404`) if onboarding is incomplete.
+
+---
+
+## Authorization & Security
+
+1. **JWT Strategy**: Requests carry `Authorization: Bearer <TOKEN>`. `JwtStrategy` validates the signature and populates `req.user` with `{ id, email, role }`.
+2. **Role Guards**: `RolesGuard` evaluates `@Roles('DOCTOR')` or `@Roles('PATIENT')` against `req.user.role`. Access by unauthorized roles throws `403 Forbidden`.
+3. **Identity Resolution**: `doctorId` is **never accepted in request bodies or query parameters**. Doctor identity is always resolved directly from `req.user.id`.
+4. **Ownership Verification**: Before mutating or deleting availability records, the service verifies that `slot.doctor.id === resolvedDoctorProfile.id`. Mismatches throw `ForbiddenException`.
+
+---
+
+## Database Schema
+
+```mermaid
+erDiagram
+    users ||--o| doctor_profiles : "has profile"
+    users ||--o| patient_profiles : "has profile"
+    doctor_profiles ||--o{ recurring_availabilities : "defines"
+    doctor_profiles ||--o{ custom_availabilities : "overrides"
+
+    users {
+        uuid id PK
+        string email UK
+        string password
+        string role
+        timestamp created_at
+    }
+
+    doctor_profiles {
+        uuid id PK
+        uuid user_id FK, UK
+        string full_name
+        string specialization
+        int experience
+        string qualification
+        decimal consultation_fee
+        string availability
+        text profile_details
+        timestamp created_at
+    }
+
+    patient_profiles {
+        uuid id PK
+        uuid user_id FK, UK
+        string full_name
+        int age
+        string gender
+        string contact_details
+        text basic_health_information
+        timestamp created_at
+    }
+
+    recurring_availabilities {
+        uuid id PK
+        uuid doctor_id FK
+        string weekday
+        time start_time
+        time end_time
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    custom_availabilities {
+        uuid id PK
+        uuid doctor_id FK
+        date date
+        time start_time
+        time end_time
+        timestamp created_at
+        timestamp updated_at
+    }
+```
+
+### Table Summary & Constraints
+
+| Table Name | Primary Key | Foreign Keys | Composite Constraints & Indexes |
+|---|---|---|---|
+| `users` | `id` (UUID) | None | `UNIQUE (email)` |
+| `doctor_profiles` | `id` (UUID) | `user_id` → `users(id)` ON DELETE CASCADE | `UNIQUE (user_id)` |
+| `patient_profiles` | `id` (UUID) | `user_id` → `users(id)` ON DELETE CASCADE | `UNIQUE (user_id)` |
+| `recurring_availabilities` | `id` (UUID) | `doctor_id` → `doctor_profiles(id)` ON DELETE CASCADE | `UNIQUE (doctor_id, weekday, start_time, end_time)`, INDEX `(doctor_id, weekday)` |
+| `custom_availabilities` | `id` (UUID) | `doctor_id` → `doctor_profiles(id)` ON DELETE CASCADE | `UNIQUE (doctor_id, date, start_time, end_time)`, INDEX `(doctor_id, date)` |
+
+---
+
+## Testing & Verification
+
+The repository includes a comprehensive, automated test runner (`run-tests.js`) that validates the server at runtime.
+
+### Running Automated Integration Tests
+
+1. Start the server in one terminal:
+   ```bash
+   npm run start:dev
+   ```
+
+2. Run the test suite in a second terminal:
+   ```bash
+   node run-tests.js
+   ```
+
+### Test Suite Output Summary (28 Scenarios)
+
+```text
+═══════════════════════════════════════════════════════════
+  Day 4 — Runtime Verification
+  Target: http://localhost:3000
+═══════════════════════════════════════════════════════════
+
+══════ SETUP ══════
+  Doctor 1 register: 201
+  ✓ Doctor 1 registered and logged in
+  ✓ Doctor 1 profile created
+  Doctor 2 register: 201
+  ✓ Doctor 2 registered and logged in
+  Patient register: 201
+  ✓ Patient registered and logged in
+
+══════ AUTHORIZATION ══════
+  ✓ PASS — T01 — No token → 401 | actual: 401
+  ✓ PASS — T02 — Patient token → 403 | actual: 403
+
+══════ RECURRING AVAILABILITY ══════
+  ✓ PASS — T03 — Create valid recurring slot → 201 | actual: 201
+  ✓ PASS — T04 — Create second non-overlapping slot → 201 | actual: 201
+  ✓ PASS — T05 — Adjacent slot (11:00 after 09:00–11:00) → 201 (allowed) | actual: 201
+  ✓ PASS — T06 — Overlapping slot → 409 | actual: 409
+  ✓ PASS — T07 — Exact duplicate slot → 409 | actual: 409
+
+══════ DTO VALIDATION ══════
+  ✓ PASS — T08 — Invalid weekday → 400 | actual: 400
+  ✓ PASS — T09 — startTime >= endTime → 400 | actual: 400
+  ✓ PASS — T10 — Invalid time format (9:00 not HH:MM) → 400 | actual: 400
+
+══════ GET RECURRING ══════
+  ✓ PASS — T11 — GET recurring → 200 | actual: 200
+  ✓ PASS — T12 — Returns array | actual: "object"
+
+══════ UPDATE ══════
+  ✓ PASS — T13 — Update own slot → 200 | actual: 200
+  ✓ PASS — T14 — Updated startTime reflects change | actual: "08:00"
+  ✓ PASS — T15 — Update another doctor slot → 403 | actual: 403
+
+══════ DELETE ══════
+  ✓ PASS — T16 — Delete own slot → 200 | actual: 200
+
+══════ CUSTOM OVERRIDE ══════
+  ✓ PASS — T17 — Create valid custom override → 201 | actual: 201
+  ✓ PASS — T18 — Invalid calendar date (2026-02-30) → 400 | actual: 400
+  ✓ PASS — T19 — Invalid calendar date (month 13) → 400 | actual: 400
+
+══════ GET BY DATE ══════
+  ✓ PASS — T20 — GET by date with override → 200 | actual: 200
+  ✓ PASS — T21 — Returns source: custom | actual: "custom"
+  ✓ PASS — T22 — Does not return recurring | actual: "custom"
+  ✓ PASS — T23 — GET by date (Monday) with no override → 200 | actual: 200
+  ✓ PASS — T24 — Returns source: recurring | actual: "recurring"
+  ✓ PASS — T25 — GET /date with no query param → 400 | actual: 400
+
+══════ REGRESSION — DAY 1-3 APIs ══════
+  ✓ PASS — R01 — GET /doctor/profile still works → 200 | actual: 200
+  ✓ PASS — R02 — PATCH /doctor/profile still works → 200 | actual: 200
+  ✓ PASS — R03 — Login with wrong creds still returns 401 | actual: 401
+
+═══════════════════════════════════════════════════════════
+  RESULTS: 28 passed, 0 failed
+═══════════════════════════════════════════════════════════
+```
+
+---
+
+## Engineering Decisions
+
+1. **Native PostgreSQL `TIME` Data Type**: Enables native PostgreSQL time validation and ordering. Prevents string format mismatches across application layers.
+2. **`VARCHAR` Weekday Storage with TypeScript Enum**: Storing weekdays as `VARCHAR` while validating with `@IsEnum(Weekday)` at the DTO layer avoids rigid PostgreSQL `CREATE TYPE` DDL migrations while preserving strict compile-time and runtime validation.
+3. **Stateless Interval Arithmetic**: Time inputs (`HH:MM`) are converted to minutes from midnight for all range checks. Strict comparison (`newStart < existingEnd && existingStart < newEnd`) cleanly allows adjacent slot boundaries (`09:00–10:00` and `10:00–11:00`) without triggering false conflicts.
+4. **Static Route Declaration Order**: Placing static `@Get('date')` before dynamic `@Get(':id')` in `DoctorAvailabilityController` prevents NestJS route parameter shadowing.
+5. **Defense-in-Depth Duplicate Prevention**: Combining application-level overlap checking with database composite `UNIQUE` constraints guarantees data integrity even during concurrent write operations.
+
+---
+
+## Future Improvements
+
+*(Optional enhancements beyond the internship assignment scope)*
+
+* **SQL-Level Overlap Operators**: Migrate overlap calculations from in-memory processing to PostgreSQL `OVERLAPS` or QueryBuilder range queries for ultra-high-volume slot datasets.
+* **Calendar-Order Weekday Sorting**: Sort recurring weekday slot output by calendar day sequence (Monday–Sunday) rather than alphabetical `VARCHAR` sorting (`ASC`).
+* **UUID Parameter Pipes**: Apply NestJS `ParseUUIDPipe` to path parameters to return `400 Bad Request` instead of `404 Not Found` when malformed UUID strings are passed.
+
+---
+
+## Conclusion
+
+The Schedula Backend (`schedula-jagadeesh`) feature implementation for Day 4 Doctor Availability is **complete and verified**. The application compiles cleanly with zero TypeScript errors, auto-executes database schema migrations on startup, and passes a comprehensive 28-scenario integration test suite validating business rules, authorization guards, DTO schema boundaries, custom override precedence, and regression safety across existing Day 1–3 endpoints.
