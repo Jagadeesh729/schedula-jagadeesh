@@ -57,7 +57,14 @@ export class WaveBookingService {
         status: 'CONFIRMED',
       });
 
-      return await manager.save(appointment);
+      try {
+        return await manager.save(appointment);
+      } catch (error: any) {
+        if (error?.code === '23505') {
+          throw new ConflictException('Wave booking could not be completed');
+        }
+        throw error;
+      }
     });
   }
 }

@@ -19,12 +19,33 @@ let PATIENT1_USER_ID = '';
 let PATIENT2_TOKEN = '';
 let PATIENT2_USER_ID = '';
 
+let PATIENT3_TOKEN = '';
+let PATIENT3_USER_ID = '';
+
+let PATIENT4_TOKEN = '';
+let PATIENT4_USER_ID = '';
+
 let streamAppointmentId = '';
 let waveAppointmentId = '';
 
 let passed = 0;
 let failed = 0;
 const results = [];
+
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getNextMonday() {
+  const date = new Date();
+  const day = date.getDay();
+  const daysUntilMonday = (8 - day) % 7 || 7;
+  date.setDate(date.getDate() + daysUntilMonday);
+  return formatDate(date);
+}
 
 async function req(method, path, body = null, token = null) {
   const headers = { 'Content-Type': 'application/json' };
@@ -95,10 +116,65 @@ async function setup() {
   const p2Login = await req('POST', '/auth/login', { email: p2Email, password: 'Pass1234!' });
   PATIENT2_TOKEN = p2Login.data.access_token;
   console.log(`  ✓ Patient 2 registered`);
+
+  // Register Patient 3
+  const p3Email = `patient3_${Date.now()}@test.com`;
+  const p3Reg = await req('POST', '/auth/signup', { name: 'Patient Three', email: p3Email, password: 'Pass1234!', role: 'PATIENT' });
+  PATIENT3_USER_ID = p3Reg.data.id;
+  const p3Login = await req('POST', '/auth/login', { email: p3Email, password: 'Pass1234!' });
+  PATIENT3_TOKEN = p3Login.data.access_token;
+  console.log(`  ✓ Patient 3 registered`);
+
+  // Register Patient 4
+  const p4Email = `patient4_${Date.now()}@test.com`;
+  const p4Reg = await req('POST', '/auth/signup', { name: 'Patient Four', email: p4Email, password: 'Pass1234!', role: 'PATIENT' });
+  PATIENT4_USER_ID = p4Reg.data.id;
+  const p4Login = await req('POST', '/auth/login', { email: p4Email, password: 'Pass1234!' });
+  PATIENT4_TOKEN = p4Login.data.access_token;
+  console.log(`  ✓ Patient 4 registered`);
 }
 
 async function runTests() {
   await setup();
+
+  const futureDate = getNextMonday();
+
+  console.log('\n══════ SECURITY ASSERTIONS ══════');
+
+  const unauthCreate = await req('POST', '/appointments', {
+    doctorId: DOCTOR1_PROFILE_ID,
+    date: futureDate,
+    slot: { startTime: '10:00', endTime: '10:15' },
+  });
+  check('POST /appointments without JWT -> 401', unauthCreate.status === 401, unauthCreate.status);
+
+  const invalidJwtCreate = await req('POST', '/appointments', {
+    doctorId: DOCTOR1_PROFILE_ID,
+    date: futureDate,
+    slot: { startTime: '10:00', endTime: '10:15' },
+  }, 'not-a-valid-jwt');
+  check('POST /appointments with invalid JWT -> 401', invalidJwtCreate.status === 401, invalidJwtCreate.status);
+
+  const ownDoctorConfig = await req('POST', `/doctors/${DOCTOR1_PROFILE_ID}/scheduling`, {
+    schedulingType: 'STREAM',
+    slotDuration: 15,
+    bufferTime: 5,
+  }, DOCTOR1_TOKEN);
+  check('Doctor A configures Doctor A -> success', ownDoctorConfig.status === 201 || ownDoctorConfig.status === 200, ownDoctorConfig.status);
+
+  const otherDoctorConfig = await req('POST', `/doctors/${DOCTOR2_PROFILE_ID}/scheduling`, {
+    schedulingType: 'STREAM',
+    slotDuration: 15,
+    bufferTime: 5,
+  }, DOCTOR1_TOKEN);
+  check('Doctor A configures Doctor B -> 403', otherDoctorConfig.status === 403, otherDoctorConfig.status);
+
+  const patientConfig = await req('POST', `/doctors/${DOCTOR1_PROFILE_ID}/scheduling`, {
+    schedulingType: 'STREAM',
+    slotDuration: 15,
+    bufferTime: 5,
+  }, PATIENT1_TOKEN);
+  check('PATIENT attempts doctor scheduling configuration -> 403', patientConfig.status === 403, patientConfig.status);
 
   console.log('\n══════ 1. SCHEDULING CONFIGURATION TESTS ══════');
 
@@ -153,7 +229,7 @@ async function runTests() {
     schedulingType: 'STREAM',
     slotDuration: 15,
   }, DOCTOR1_TOKEN);
-  check('Reject non-existent doctor with 404 Not Found', cfgNotFound.status === 404, cfgNotFound.status);
+  check('Reject non-existent doctor with 403 Forbidden', cfgNotFound.status === 403, cfgNotFound.status);
 
   console.log('\n══════ 2. STREAM SLOT GENERATION & AVAILABILITY TESTS ══════');
 
@@ -164,8 +240,7 @@ async function runTests() {
     endTime: '11:00',
   }, DOCTOR1_TOKEN);
 
-  const futureMonday = '2026-08-03';
-  const streamAvail = await req('GET', `/doctors/${DOCTOR1_PROFILE_ID}/availability?date=${futureMonday}`);
+  const streamAvail = await req('GET', `/doctors/${DOCTOR1_PROFILE_ID}/availability?date=${futureDate}`);
   check('Fetch STREAM availability generates slots (10:00-10:15, 10:20-10:35, 10:40-10:55)',
     streamAvail.status === 200 && Array.isArray(streamAvail.data) && streamAvail.data.length === 3,
     streamAvail.data
@@ -176,9 +251,8 @@ async function runTests() {
   // Book exact Stream slot
   const bookStream = await req('POST', '/appointments', {
     doctorId: DOCTOR1_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     slot: { startTime: '10:00', endTime: '10:15' },
-    patientId: PATIENT1_USER_ID,
   }, PATIENT1_TOKEN);
 
   check('Book exact STREAM slot returns 201 with appointment payload',
@@ -188,16 +262,15 @@ async function runTests() {
   streamAppointmentId = bookStream.data?.appointmentId;
 
   // Re-fetch availability, 10:00 slot should be unavailable
-  const streamAvailAfter = await req('GET', `/doctors/${DOCTOR1_PROFILE_ID}/availability?date=${futureMonday}`);
+  const streamAvailAfter = await req('GET', `/doctors/${DOCTOR1_PROFILE_ID}/availability?date=${futureDate}`);
   const slot10 = streamAvailAfter.data?.find(s => s.startTime === '10:00');
   check('Booked STREAM slot is marked unavailable (available: false)', slot10?.available === false, slot10);
 
   // Overlap Validation (book same slot again)
   const bookStreamOverlap = await req('POST', '/appointments', {
     doctorId: DOCTOR1_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     slot: { startTime: '10:00', endTime: '10:15' },
-    patientId: PATIENT2_USER_ID,
   }, PATIENT2_TOKEN);
   check('Reject booking booked STREAM slot with 409 Conflict', bookStreamOverlap.status === 409, bookStreamOverlap.status);
 
@@ -206,7 +279,7 @@ async function runTests() {
     doctorId: DOCTOR1_PROFILE_ID,
     date: '2020-01-01',
     slot: { startTime: '10:00', endTime: '10:15' },
-  });
+  }, PATIENT1_TOKEN);
   check('Reject booking for past date with 400 Bad Request', bookPast.status === 400, bookPast.status);
 
   console.log('\n══════ 4. WAVE SCHEDULING & TOKEN ASSIGNMENT TESTS ══════');
@@ -219,7 +292,7 @@ async function runTests() {
   }, DOCTOR2_TOKEN);
 
   // Fetch Wave Availability
-  const waveAvail = await req('GET', `/doctors/${DOCTOR2_PROFILE_ID}/availability?date=${futureMonday}`);
+  const waveAvail = await req('GET', `/doctors/${DOCTOR2_PROFILE_ID}/availability?date=${futureDate}`);
   check('Fetch WAVE availability returns window with capacity',
     waveAvail.status === 200 && Array.isArray(waveAvail.data) && waveAvail.data[0]?.window === '10:00-11:00' && waveAvail.data[0]?.capacity === 3,
     waveAvail.data
@@ -228,9 +301,8 @@ async function runTests() {
   // Patient 1 books Wave token 1
   const waveBook1 = await req('POST', '/appointments', {
     doctorId: DOCTOR2_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     window: '10:00-11:00',
-    patientId: PATIENT1_USER_ID,
   }, PATIENT1_TOKEN);
   check('Patient 1 books WAVE window -> Token 1 assigned',
     waveBook1.status === 201 && waveBook1.data?.scheduleType === 'WAVE' && waveBook1.data?.token === 1,
@@ -241,52 +313,59 @@ async function runTests() {
   // Duplicate Booking Validation
   const waveBookDup = await req('POST', '/appointments', {
     doctorId: DOCTOR2_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     window: '10:00-11:00',
-    patientId: PATIENT1_USER_ID,
   }, PATIENT1_TOKEN);
   check('Reject duplicate WAVE booking for same patient with 409 Conflict', waveBookDup.status === 409, waveBookDup.status);
 
   // Patient 2 books Wave token 2
   const waveBook2 = await req('POST', '/appointments', {
     doctorId: DOCTOR2_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     window: '10:00-11:00',
-    patientId: PATIENT2_USER_ID,
   }, PATIENT2_TOKEN);
   check('Patient 2 books WAVE window -> Token 2 assigned', waveBook2.status === 201 && waveBook2.data?.token === 2, waveBook2.data);
 
-  // Patient 3 (anonymous) books Wave token 3
+  // Patient 3 books Wave token 3
   const waveBook3 = await req('POST', '/appointments', {
     doctorId: DOCTOR2_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     window: '10:00-11:00',
-  });
-  check('Patient 3 books WAVE window -> Token 3 assigned (Capacity reached)', waveBook3.status === 201 && waveBook3.data?.token === 3, waveBook3.data);
+  }, PATIENT3_TOKEN);
+  check('Patient 3 books WAVE window -> Token 3 assigned', waveBook3.status === 201 && waveBook3.data?.token === 3, waveBook3.data);
 
   // Patient 4 attempts booking when maxCapacity=3 -> Capacity Exceeded
   const waveBookExceeded = await req('POST', '/appointments', {
     doctorId: DOCTOR2_PROFILE_ID,
-    date: futureMonday,
+    date: futureDate,
     window: '10:00-11:00',
-  });
+  }, PATIENT4_TOKEN);
   check('Reject booking exceeding maxCapacity with 409 Conflict (Wave Full)', waveBookExceeded.status === 409, waveBookExceeded.status);
 
   console.log('\n══════ 5. GET APPOINTMENT BY ID TESTS ══════');
 
+  const getAppNoJwt = await req('GET', `/appointments/${streamAppointmentId}`);
+  check('GET appointment without JWT -> 401', getAppNoJwt.status === 401, getAppNoJwt.status);
+
+  const getAppOtherPatient = await req('GET', `/appointments/${streamAppointmentId}`, null, PATIENT2_TOKEN);
+  check('Different patient GET -> 403', getAppOtherPatient.status === 403, getAppOtherPatient.status);
+
   // Fetch existing appointment by ID
-  const getApp = await req('GET', `/appointments/${streamAppointmentId}`);
+  const getApp = await req('GET', `/appointments/${streamAppointmentId}`, null, PATIENT1_TOKEN);
   check('Fetch appointment by valid UUID returns appointment details',
     getApp.status === 200 && getApp.data?.appointmentId === streamAppointmentId,
     getApp.data
   );
 
+  const getAppDoctor = await req('GET', `/appointments/${streamAppointmentId}`, null, DOCTOR1_TOKEN);
+  check('Assigned doctor GET -> success', getAppDoctor.status === 200 && getAppDoctor.data?.doctorId === DOCTOR1_PROFILE_ID, getAppDoctor.data);
+
   // Fetch with invalid UUID
-  const getAppInvUUID = await req('GET', '/appointments/invalid-uuid-string');
+  const getAppInvUUID = await req('GET', '/appointments/invalid-uuid-string', null, PATIENT1_TOKEN);
   check('Reject invalid appointment ID UUID with 400 Bad Request via ParseUUIDPipe', getAppInvUUID.status === 400, getAppInvUUID.status);
 
   // Fetch non-existent appointment
-  const getAppNotFound = await req('GET', `/appointments/${fakeDoctorId}`);
+  const getAppNotFound = await req('GET', `/appointments/${fakeDoctorId}`, null, PATIENT1_TOKEN);
   check('Reject non-existent appointment ID with 404 Not Found', getAppNotFound.status === 404, getAppNotFound.status);
 
   console.log('\n══════ ADVANCED SCHEDULING SUMMARY ══════');

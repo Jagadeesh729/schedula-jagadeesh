@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -172,7 +174,18 @@ export class AppointmentService {
     throw new BadRequestException('invalid scheduling type');
   }
 
-  async createAppointment(dto: CreateAppointmentDto, currentUserId?: string): Promise<any> {
+  async createAppointment(
+    dto: CreateAppointmentDto,
+    currentUserId?: string,
+    currentUserRole?: string,
+  ): Promise<any> {
+    if (!currentUserId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+    if (currentUserRole && currentUserRole !== 'PATIENT') {
+      throw new ForbiddenException('Only patients can create appointments');
+    }
+
     if (!dto.date) {
       throw new BadRequestException('date is required');
     }
@@ -188,7 +201,7 @@ export class AppointmentService {
     }
 
     const scheduleType = dto.scheduleType || config.schedulingType;
-    const patientId = dto.patientId || currentUserId || null;
+    const patientId = currentUserId;
 
     const windows = await this.getAvailabilityWindowsForDate(doctor.id, dto.date);
     if (windows.length === 0) {
@@ -293,7 +306,15 @@ export class AppointmentService {
     throw new BadRequestException('invalid scheduling type');
   }
 
-  async getAppointmentById(id: string): Promise<any> {
+  async getAppointmentById(
+    id: string,
+    currentUserId?: string,
+    currentUserRole?: string,
+  ): Promise<any> {
+    if (!currentUserId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
     const appointment = await this.appointmentRepo.findOne({
       where: { id },
       relations: { doctor: true },
@@ -301,6 +322,19 @@ export class AppointmentService {
 
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
+    }
+
+    if (currentUserRole === 'PATIENT') {
+      if (appointment.patientId !== currentUserId) {
+        throw new ForbiddenException('You do not have access to this appointment');
+      }
+    } else if (currentUserRole === 'DOCTOR') {
+      const doctorProfile = await this.resolveDoctorProfile(currentUserId);
+      if (appointment.doctorId !== doctorProfile.id) {
+        throw new ForbiddenException('You do not have access to this appointment');
+      }
+    } else {
+      throw new ForbiddenException('You do not have access to this appointment');
     }
 
     return {

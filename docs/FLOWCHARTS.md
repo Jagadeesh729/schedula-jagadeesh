@@ -11,7 +11,7 @@ STREAM scheduling automatically divides doctor availability windows into fixed-d
 ```mermaid
 graph TD
     A[Doctor Authentication] --> B[POST /doctors/:doctorId/scheduling]
-    B -->|Configures STREAM: slotDuration=15, bufferTime=5| C[Save SchedulingConfig in DB]
+    B -->|Verify authenticated doctor owns doctorId; otherwise 403| C[Save SchedulingConfig in DB]
     C --> D[POST /doctor/availability]
     D -->|Doctor defines window e.g. 10:00-11:00| E[Save Availability Window in DB]
     E --> F[Patient Query: GET /doctors/:doctorId/availability?date=YYYY-MM-DD]
@@ -41,7 +41,7 @@ WAVE scheduling assigns patient arrival tokens for a common time window up to a 
 ```mermaid
 graph TD
     A[Doctor Authentication] --> B[POST /doctors/:doctorId/scheduling]
-    B -->|Configures WAVE: maxCapacity=5| C[Save SchedulingConfig in DB]
+    B -->|Verify authenticated doctor owns doctorId; otherwise 403| C[Save SchedulingConfig in DB]
     C --> D[POST /doctor/availability]
     D -->|Doctor defines window e.g. 10:00-11:00| E[Save Availability Window in DB]
     E --> F[Patient Query: GET /doctors/:doctorId/availability?date=YYYY-MM-DD]

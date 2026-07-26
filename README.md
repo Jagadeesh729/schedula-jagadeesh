@@ -151,7 +151,7 @@ npm install
 Create a `.env` file in the project root:
 ```env
 DATABASE_URL=postgresql://postgres:postgres123@localhost:5432/schedula
-JWT_SECRET=super_secret_key_for_jwt
+JWT_SECRET=replace-with-a-strong-secret
 PORT=3000
 ```
 
@@ -189,6 +189,7 @@ Configures a doctor's scheduling strategy (`STREAM` or `WAVE`).
 
 - **Headers**: `Authorization: Bearer <DOCTOR_JWT>`
 - **Path Parameter**: `:doctorId` (UUID, validated via `ParseUUIDPipe`)
+- **Authorization**: The authenticated doctor may only configure their own doctor profile; cross-doctor configuration returns `403 Forbidden`.
 
 #### Sample Request (STREAM):
 ```json
@@ -274,6 +275,9 @@ GET /doctors/a3595f3f-86e3-4340-8d7d-188afd792c64/availability?date=2026-08-03
 
 Books a consultation appointment under STREAM or WAVE strategy.
 
+- **Headers**: `Authorization: Bearer <PATIENT_JWT>` (required)
+- **Authorization**: Only patients may create appointments, and each patient can only book using their own authenticated identity.
+
 #### Sample Request (STREAM Booking):
 ```json
 POST /appointments
@@ -330,7 +334,9 @@ POST /appointments
 
 Fetches appointment details by ID.
 
+- **Headers**: `Authorization: Bearer <PATIENT_OR_DOCTOR_JWT>` (required)
 - **Path Parameter**: `:id` (UUID, validated via `ParseUUIDPipe`)
+- **Authorization**: Patients may only read their own appointments; doctors may only read appointments for their own doctor profile.
 
 #### Sample Response:
 ```json

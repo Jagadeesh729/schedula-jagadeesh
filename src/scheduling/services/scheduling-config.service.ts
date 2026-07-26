@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -37,8 +38,16 @@ export class SchedulingConfigService {
   async configureScheduling(
     doctorIdOrUserId: string,
     dto: CreateSchedulingConfigDto,
+    currentUserId?: string,
   ): Promise<SchedulingConfig> {
     const doctor = await this.resolveDoctorProfile(doctorIdOrUserId);
+
+    if (currentUserId) {
+      const actingDoctor = await this.resolveDoctorProfile(currentUserId);
+      if (actingDoctor.id !== doctor.id) {
+        throw new ForbiddenException('You can only configure your own scheduling');
+      }
+    }
 
     if (dto.schedulingType === SchedulingType.STREAM) {
       if (dto.slotDuration === undefined || dto.slotDuration === null || dto.slotDuration <= 0) {

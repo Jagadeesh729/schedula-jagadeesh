@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -29,8 +30,14 @@ export class DoctorsSchedulingController {
   async configureScheduling(
     @Param('doctorId', ParseUUIDPipe) doctorId: string,
     @Body() dto: CreateSchedulingConfigDto,
+    @Request() req: any,
   ) {
-    return await this.configService.configureScheduling(doctorId, dto);
+    const actingDoctor = await this.configService.resolveDoctorProfile(req.user.id);
+    if (actingDoctor.id !== doctorId) {
+      throw new ForbiddenException('You can only configure your own scheduling');
+    }
+
+    return await this.configService.configureScheduling(doctorId, dto, req.user.id);
   }
 
   @Get(':doctorId/availability')
