@@ -45,19 +45,33 @@ export class SchedulingConfigService {
     if (currentUserId) {
       const actingDoctor = await this.resolveDoctorProfile(currentUserId);
       if (actingDoctor.id !== doctor.id) {
-        throw new ForbiddenException('You can only configure your own scheduling');
+        throw new ForbiddenException(
+          'You can only configure your own scheduling',
+        );
       }
     }
 
     if (dto.schedulingType === SchedulingType.STREAM) {
-      if (dto.slotDuration === undefined || dto.slotDuration === null || dto.slotDuration <= 0) {
+      if (
+        dto.slotDuration === undefined ||
+        dto.slotDuration === null ||
+        dto.slotDuration <= 0
+      ) {
         throw new BadRequestException('invalid slot duration');
       }
-      if (dto.bufferTime !== undefined && dto.bufferTime !== null && dto.bufferTime < 0) {
+      if (
+        dto.bufferTime !== undefined &&
+        dto.bufferTime !== null &&
+        dto.bufferTime < 0
+      ) {
         throw new BadRequestException('negative buffer');
       }
     } else if (dto.schedulingType === SchedulingType.WAVE) {
-      if (dto.maxCapacity === undefined || dto.maxCapacity === null || dto.maxCapacity <= 0) {
+      if (
+        dto.maxCapacity === undefined ||
+        dto.maxCapacity === null ||
+        dto.maxCapacity <= 0
+      ) {
         throw new BadRequestException('capacity <= 0');
       }
     } else {
@@ -70,24 +84,38 @@ export class SchedulingConfigService {
 
     if (config) {
       config.schedulingType = dto.schedulingType;
-      config.slotDuration = dto.schedulingType === SchedulingType.STREAM ? dto.slotDuration! : null;
-      config.bufferTime = dto.schedulingType === SchedulingType.STREAM ? (dto.bufferTime ?? 0) : null;
-      config.maxCapacity = dto.schedulingType === SchedulingType.WAVE ? dto.maxCapacity! : null;
+      config.slotDuration =
+        dto.schedulingType === SchedulingType.STREAM ? dto.slotDuration! : null;
+      config.bufferTime =
+        dto.schedulingType === SchedulingType.STREAM
+          ? (dto.bufferTime ?? 0)
+          : null;
+      config.maxCapacity =
+        dto.schedulingType === SchedulingType.WAVE ? dto.maxCapacity! : null;
     } else {
       config = this.configRepo.create({
         doctor,
         doctorId: doctor.id,
         schedulingType: dto.schedulingType,
-        slotDuration: dto.schedulingType === SchedulingType.STREAM ? dto.slotDuration! : null,
-        bufferTime: dto.schedulingType === SchedulingType.STREAM ? (dto.bufferTime ?? 0) : null,
-        maxCapacity: dto.schedulingType === SchedulingType.WAVE ? dto.maxCapacity! : null,
+        slotDuration:
+          dto.schedulingType === SchedulingType.STREAM
+            ? dto.slotDuration!
+            : null,
+        bufferTime:
+          dto.schedulingType === SchedulingType.STREAM
+            ? (dto.bufferTime ?? 0)
+            : null,
+        maxCapacity:
+          dto.schedulingType === SchedulingType.WAVE ? dto.maxCapacity! : null,
       });
     }
 
     return await this.configRepo.save(config);
   }
 
-  async getConfigByDoctorId(doctorIdOrUserId: string): Promise<SchedulingConfig> {
+  async getConfigByDoctorId(
+    doctorIdOrUserId: string,
+  ): Promise<SchedulingConfig> {
     const doctor = await this.resolveDoctorProfile(doctorIdOrUserId);
     const config = await this.configRepo.findOne({
       where: { doctorId: doctor.id },

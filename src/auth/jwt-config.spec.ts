@@ -14,7 +14,9 @@ describe('getJwtSecretOrThrow', () => {
   it('throws when JWT_SECRET is missing', () => {
     delete process.env.JWT_SECRET;
 
-    expect(() => getJwtSecretOrThrow()).toThrow('JWT_SECRET environment variable is required');
+    expect(() => getJwtSecretOrThrow()).toThrow(
+      'JWT_SECRET environment variable is required',
+    );
   });
 
   it('returns the configured secret when present', () => {

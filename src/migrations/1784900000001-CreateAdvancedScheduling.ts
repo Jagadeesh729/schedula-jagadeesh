@@ -44,7 +44,9 @@ export class CreateAdvancedScheduling1784900000001 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_appointments_doctor_date";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_appointments_doctor_date";`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "appointments";`);
     await queryRunner.query(`DROP TABLE IF EXISTS "scheduling_configs";`);
   }

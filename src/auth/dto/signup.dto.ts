@@ -1,4 +1,10 @@
-import { IsEmail, IsIn, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class SignupDto {
   @IsString()
@@ -13,6 +19,8 @@ export class SignupDto {
   password!: string;
 
   @IsString()
-  @IsIn(['DOCTOR', 'PATIENT'], { message: 'Role must be either DOCTOR or PATIENT' })
+  @IsIn(['DOCTOR', 'PATIENT'], {
+    message: 'Role must be either DOCTOR or PATIENT',
+  })
   role!: string;
 }

@@ -7,6 +7,15 @@ import { DataSource } from 'typeorm';
 import { Appointment } from '../entities/appointment.entity';
 import { SchedulingType } from '../enums/scheduling-type.enum';
 
+function hasErrorCode(error: unknown): error is { code: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+  );
+}
+
 @Injectable()
 export class WaveBookingService {
   constructor(private readonly dataSource: DataSource) {}
@@ -35,14 +44,20 @@ export class WaveBookingService {
 
       // Check duplicate booking if patientId is provided
       if (patientId) {
-        const hasDuplicate = existingBookings.some((b) => b.patientId === patientId);
+        const hasDuplicate = existingBookings.some(
+          (b) => b.patientId === patientId,
+        );
         if (hasDuplicate) {
-          throw new ConflictException('Patient already booked for this wave window');
+          throw new ConflictException(
+            'Patient already booked for this wave window',
+          );
         }
       }
 
       if (existingBookings.length >= maxCapacity) {
-        throw new ConflictException('Wave Full: Maximum capacity reached for this window');
+        throw new ConflictException(
+          'Wave Full: Maximum capacity reached for this window',
+        );
       }
 
       const token = existingBookings.length + 1;
@@ -59,8 +74,8 @@ export class WaveBookingService {
 
       try {
         return await manager.save(appointment);
-      } catch (error: any) {
-        if (error?.code === '23505') {
+      } catch (error: unknown) {
+        if (hasErrorCode(error) && error.code === '23505') {
           throw new ConflictException('Wave booking could not be completed');
         }
         throw error;

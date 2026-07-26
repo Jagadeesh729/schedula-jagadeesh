@@ -11,7 +11,9 @@ export class CreateCustomAvailabilityDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(TIME_FORMAT, { message: 'startTime must be in HH:MM 24-hour format' })
+  @Matches(TIME_FORMAT, {
+    message: 'startTime must be in HH:MM 24-hour format',
+  })
   startTime!: string;
 
   @IsString()

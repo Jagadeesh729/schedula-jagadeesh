@@ -23,15 +23,20 @@ import { Roles } from '../decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('DOCTOR')
 export class DoctorAvailabilityController {
-  constructor(private readonly availabilityService: DoctorAvailabilityService) {}
+  constructor(
+    private readonly availabilityService: DoctorAvailabilityService,
+  ) {}
 
   @Post()
-  async createRecurring(@Request() req, @Body() dto: CreateRecurringAvailabilityDto) {
+  async createRecurring(
+    @Request() req: { user: Express.User },
+    @Body() dto: CreateRecurringAvailabilityDto,
+  ) {
     return this.availabilityService.createRecurring(req.user.id, dto);
   }
 
   @Get()
-  async getRecurring(@Request() req) {
+  async getRecurring(@Request() req: { user: Express.User }) {
     return this.availabilityService.getRecurring(req.user.id);
   }
 
@@ -40,13 +45,16 @@ export class DoctorAvailabilityController {
   // the literal string "date" would be captured as the :id parameter,
   // causing the wrong handler to be invoked.
   @Get('date')
-  async getByDate(@Request() req, @Query('date') date: string) {
+  async getByDate(
+    @Request() req: { user: Express.User },
+    @Query('date') date: string,
+  ) {
     return this.availabilityService.getByDate(req.user.id, date);
   }
 
   @Patch(':id')
   async updateRecurring(
-    @Request() req,
+    @Request() req: { user: Express.User },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateRecurringAvailabilityDto,
   ) {
@@ -54,12 +62,18 @@ export class DoctorAvailabilityController {
   }
 
   @Delete(':id')
-  async deleteRecurring(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
+  async deleteRecurring(
+    @Request() req: { user: Express.User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.availabilityService.deleteRecurring(req.user.id, id);
   }
 
   @Post('override')
-  async createOverride(@Request() req, @Body() dto: CreateCustomAvailabilityDto) {
+  async createOverride(
+    @Request() req: { user: Express.User },
+    @Body() dto: CreateCustomAvailabilityDto,
+  ) {
     return this.availabilityService.createOverride(req.user.id, dto);
   }
 }

@@ -16,7 +16,10 @@ import { CustomAvailability } from '../../doctor/entities/custom-availability.en
 import { Weekday } from '../../doctor/enums/weekday.enum';
 import { SchedulingType } from '../enums/scheduling-type.enum';
 import { CreateAppointmentDto } from '../dto/create-appointment.dto';
-import { SlotGenerationService } from './slot-generation.service';
+import {
+  GeneratedStreamSlot,
+  SlotGenerationService,
+} from './slot-generation.service';
 import { WaveBookingService } from './wave-booking.service';
 
 const WEEKDAY_NAMES: Weekday[] = [
@@ -54,7 +57,9 @@ export class AppointmentService {
     const targetDate = new Date(year, month - 1, day);
 
     if (targetDate < today) {
-      throw new BadRequestException('Cannot book appointments for past dates or times');
+      throw new BadRequestException(
+        'Cannot book appointments for past dates or times',
+      );
     }
   }
 
@@ -83,7 +88,10 @@ export class AppointmentService {
       order: { startTime: 'ASC' },
     });
     if (overrides.length > 0) {
-      return overrides.map((o) => ({ startTime: o.startTime, endTime: o.endTime }));
+      return overrides.map((o) => ({
+        startTime: o.startTime,
+        endTime: o.endTime,
+      }));
     }
 
     // 2. Fallback to recurring availability
@@ -100,10 +108,16 @@ export class AppointmentService {
       order: { startTime: 'ASC' },
     });
 
-    return recurring.map((r) => ({ startTime: r.startTime, endTime: r.endTime }));
+    return recurring.map((r) => ({
+      startTime: r.startTime,
+      endTime: r.endTime,
+    }));
   }
 
-  async getDoctorAvailability(doctorIdOrUserId: string, date: string): Promise<any> {
+  async getDoctorAvailability(
+    doctorIdOrUserId: string,
+    date: string,
+  ): Promise<unknown[]> {
     if (!date) {
       throw new BadRequestException('date query parameter is required');
     }
@@ -135,7 +149,7 @@ export class AppointmentService {
         throw new BadRequestException('invalid slot duration');
       }
 
-      let allSlots: any[] = [];
+      let allSlots: GeneratedStreamSlot[] = [];
       for (const win of windows) {
         const slots = this.slotGenService.generateSlotsForWindow(
           win.startTime,
@@ -153,13 +167,19 @@ export class AppointmentService {
         throw new BadRequestException('capacity <= 0');
       }
 
-      const waveWindows: any[] = [];
+      const waveWindows: {
+        window: string;
+        available: boolean;
+        capacity: number;
+      }[] = [];
       for (const win of windows) {
         // Standard format "HH:MM-HH:MM" e.g. "10:00-11:00"
         const windowStr = `${win.startTime.slice(0, 5)}-${win.endTime.slice(0, 5)}`;
-        
+
         const bookedCount = bookedAppointments.filter(
-          (app) => app.scheduleType === SchedulingType.WAVE && app.window === windowStr,
+          (app) =>
+            app.scheduleType === SchedulingType.WAVE &&
+            app.window === windowStr,
         ).length;
 
         waveWindows.push({
@@ -178,7 +198,7 @@ export class AppointmentService {
     dto: CreateAppointmentDto,
     currentUserId?: string,
     currentUserRole?: string,
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     if (!currentUserId) {
       throw new UnauthorizedException('Authentication required');
     }
@@ -203,14 +223,21 @@ export class AppointmentService {
     const scheduleType = dto.scheduleType || config.schedulingType;
     const patientId = currentUserId;
 
-    const windows = await this.getAvailabilityWindowsForDate(doctor.id, dto.date);
+    const windows = await this.getAvailabilityWindowsForDate(
+      doctor.id,
+      dto.date,
+    );
     if (windows.length === 0) {
-      throw new BadRequestException('Doctor has no availability on the specified date');
+      throw new BadRequestException(
+        'Doctor has no availability on the specified date',
+      );
     }
 
     if (scheduleType === SchedulingType.STREAM) {
       if (!dto.slot || !dto.slot.startTime || !dto.slot.endTime) {
-        throw new BadRequestException('Slot startTime and endTime are required for STREAM scheduling');
+        throw new BadRequestException(
+          'Slot startTime and endTime are required for STREAM scheduling',
+        );
       }
 
       const reqStart = this.slotGenService.timeToMinutes(dto.slot.startTime);
@@ -228,7 +255,9 @@ export class AppointmentService {
       });
 
       if (!fitsWindow) {
-        throw new BadRequestException('Requested slot is outside doctor availability window');
+        throw new BadRequestException(
+          'Requested slot is outside doctor availability window',
+        );
       }
 
       // Check if slot overlaps with existing booked appointments
@@ -265,8 +294,12 @@ export class AppointmentService {
         token: null,
         window: null,
         slot: {
-          startTime: saved.slotStartTime ? saved.slotStartTime.slice(0, 5) : dto.slot.startTime,
-          endTime: saved.slotEndTime ? saved.slotEndTime.slice(0, 5) : dto.slot.endTime,
+          startTime: saved.slotStartTime
+            ? saved.slotStartTime.slice(0, 5)
+            : dto.slot.startTime,
+          endTime: saved.slotEndTime
+            ? saved.slotEndTime.slice(0, 5)
+            : dto.slot.endTime,
         },
         status: saved.status,
       };
@@ -282,7 +315,9 @@ export class AppointmentService {
       });
 
       if (!validWindow) {
-        throw new BadRequestException('Requested window does not match doctor availability');
+        throw new BadRequestException(
+          'Requested window does not match doctor availability',
+        );
       }
 
       const saved = await this.waveBookingService.bookWaveToken(
@@ -310,7 +345,7 @@ export class AppointmentService {
     id: string,
     currentUserId?: string,
     currentUserRole?: string,
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     if (!currentUserId) {
       throw new UnauthorizedException('Authentication required');
     }
@@ -326,15 +361,21 @@ export class AppointmentService {
 
     if (currentUserRole === 'PATIENT') {
       if (appointment.patientId !== currentUserId) {
-        throw new ForbiddenException('You do not have access to this appointment');
+        throw new ForbiddenException(
+          'You do not have access to this appointment',
+        );
       }
     } else if (currentUserRole === 'DOCTOR') {
       const doctorProfile = await this.resolveDoctorProfile(currentUserId);
       if (appointment.doctorId !== doctorProfile.id) {
-        throw new ForbiddenException('You do not have access to this appointment');
+        throw new ForbiddenException(
+          'You do not have access to this appointment',
+        );
       }
     } else {
-      throw new ForbiddenException('You do not have access to this appointment');
+      throw new ForbiddenException(
+        'You do not have access to this appointment',
+      );
     }
 
     return {
@@ -344,10 +385,13 @@ export class AppointmentService {
       scheduleType: appointment.scheduleType,
       token: appointment.token,
       window: appointment.window,
-      slot: appointment.slotStartTime && appointment.slotEndTime ? {
-        startTime: appointment.slotStartTime.slice(0, 5),
-        endTime: appointment.slotEndTime.slice(0, 5),
-      } : null,
+      slot:
+        appointment.slotStartTime && appointment.slotEndTime
+          ? {
+              startTime: appointment.slotStartTime.slice(0, 5),
+              endTime: appointment.slotEndTime.slice(0, 5),
+            }
+          : null,
       date: appointment.date,
       status: appointment.status,
       createdAt: appointment.createdAt,

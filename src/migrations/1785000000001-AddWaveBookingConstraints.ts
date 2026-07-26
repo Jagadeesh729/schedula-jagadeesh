@@ -11,6 +11,8 @@ export class AddWaveBookingConstraints1785000000001 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_appointments_wave_unique_booking";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_appointments_wave_unique_booking";`,
+    );
   }
 }

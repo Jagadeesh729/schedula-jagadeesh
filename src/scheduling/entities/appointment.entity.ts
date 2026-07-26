@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
 import { User } from '../../users/entities/user.entity';
+import { SchedulingType } from '../enums/scheduling-type.enum';
 
 export enum AppointmentStatus {
   CONFIRMED = 'CONFIRMED',
@@ -34,8 +35,8 @@ export class Appointment {
   @Column({ name: 'patient_id', nullable: true })
   patientId!: string | null;
 
-  @Column({ name: 'schedule_type' })
-  scheduleType!: string;
+  @Column({ name: 'schedule_type', type: 'varchar' })
+  scheduleType!: SchedulingType;
 
   @Column({ type: 'date' })
   date!: string;

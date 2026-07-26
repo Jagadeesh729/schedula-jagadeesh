@@ -9,7 +9,13 @@ import { DoctorAvailabilityService } from './doctor-availability.service';
 import { DoctorAvailabilityController } from './doctor-availability.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DoctorProfile, RecurringAvailability, CustomAvailability])],
+  imports: [
+    TypeOrmModule.forFeature([
+      DoctorProfile,
+      RecurringAvailability,
+      CustomAvailability,
+    ]),
+  ],
   controllers: [DoctorController, DoctorAvailabilityController],
   providers: [DoctorService, DoctorAvailabilityService],
   exports: [DoctorService],

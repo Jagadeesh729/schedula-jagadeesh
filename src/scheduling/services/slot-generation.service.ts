@@ -52,7 +52,11 @@ export class SlotGenerationService {
 
       // Check if slot overlaps with any booked appointment
       const isBooked = bookedAppointments.some((app) => {
-        if (app.status === 'CANCELLED' || !app.slotStartTime || !app.slotEndTime) {
+        if (
+          app.status === 'CANCELLED' ||
+          !app.slotStartTime ||
+          !app.slotEndTime
+        ) {
           return false;
         }
         const appStartMin = this.timeToMinutes(app.slotStartTime);

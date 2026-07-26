@@ -58,7 +58,9 @@ export class DoctorAvailabilityService {
       const existingStart = this.timeToMinutes(slot.startTime);
       const existingEnd = this.timeToMinutes(slot.endTime);
       if (newStart < existingEnd && existingStart < newEnd) {
-        throw new ConflictException('Time slot overlaps with an existing availability');
+        throw new ConflictException(
+          'Time slot overlaps with an existing availability',
+        );
       }
     }
   }
@@ -101,7 +103,11 @@ export class DoctorAvailabilityService {
       where: { doctor: { id: doctor.id }, weekday: dto.weekday },
     });
 
-    this.checkOverlap(existing, this.timeToMinutes(dto.startTime), this.timeToMinutes(dto.endTime));
+    this.checkOverlap(
+      existing,
+      this.timeToMinutes(dto.startTime),
+      this.timeToMinutes(dto.endTime),
+    );
 
     const slot = this.recurringRepo.create({
       doctor,
@@ -153,7 +159,9 @@ export class DoctorAvailabilityService {
       throw new NotFoundException('Recurring availability not found');
     }
     if (slot.doctor.id !== doctor.id) {
-      throw new ForbiddenException('You are not allowed to update this availability');
+      throw new ForbiddenException(
+        'You are not allowed to update this availability',
+      );
     }
 
     const updatedStartTime = dto.startTime ?? slot.startTime;
@@ -182,7 +190,10 @@ export class DoctorAvailabilityService {
     return this.recurringRepo.save(slot);
   }
 
-  async deleteRecurring(userId: string, id: string): Promise<RecurringAvailability> {
+  async deleteRecurring(
+    userId: string,
+    id: string,
+  ): Promise<RecurringAvailability> {
     const doctor = await this.resolveDoctorProfile(userId);
 
     const slot = await this.recurringRepo.findOne({
@@ -193,7 +204,9 @@ export class DoctorAvailabilityService {
       throw new NotFoundException('Recurring availability not found');
     }
     if (slot.doctor.id !== doctor.id) {
-      throw new ForbiddenException('You are not allowed to delete this availability');
+      throw new ForbiddenException(
+        'You are not allowed to delete this availability',
+      );
     }
 
     return this.recurringRepo.remove(slot);
@@ -214,7 +227,11 @@ export class DoctorAvailabilityService {
       where: { doctor: { id: doctor.id }, date: dto.date },
     });
 
-    this.checkOverlap(existing, this.timeToMinutes(dto.startTime), this.timeToMinutes(dto.endTime));
+    this.checkOverlap(
+      existing,
+      this.timeToMinutes(dto.startTime),
+      this.timeToMinutes(dto.endTime),
+    );
 
     const slot = this.customRepo.create({
       doctor,
@@ -229,7 +246,10 @@ export class DoctorAvailabilityService {
   async getByDate(
     userId: string,
     date: string,
-  ): Promise<{ source: string; slots: RecurringAvailability[] | CustomAvailability[] }> {
+  ): Promise<{
+    source: string;
+    slots: RecurringAvailability[] | CustomAvailability[];
+  }> {
     if (!date) {
       throw new BadRequestException('date query parameter is required');
     }
@@ -247,7 +267,11 @@ export class DoctorAvailabilityService {
     }
 
     const [yearStr, monthStr, dayStr] = date.split('-');
-    const parsed = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10) - 1, parseInt(dayStr, 10));
+    const parsed = new Date(
+      parseInt(yearStr, 10),
+      parseInt(monthStr, 10) - 1,
+      parseInt(dayStr, 10),
+    );
     const weekday = WEEKDAY_NAMES[parsed.getDay()];
 
     const recurring = await this.recurringRepo.find({
