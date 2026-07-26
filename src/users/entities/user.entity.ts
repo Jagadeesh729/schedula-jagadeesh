@@ -5,19 +5,19 @@ import { PatientProfile } from '../../patient/entities/patient-profile.entity';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column()
-  name: string;
+  name!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
 
   @Column()
   password?: string;
 
   @Column()
-  role: string; // 'DOCTOR' | 'PATIENT'
+  role!: string; // 'DOCTOR' | 'PATIENT'
 
   @OneToOne(() => DoctorProfile, (profile) => profile.user)
   doctorProfile?: DoctorProfile;
@@ -26,5 +26,5 @@ export class User {
   patientProfile?: PatientProfile;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 }

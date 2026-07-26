@@ -7,15 +7,15 @@ export class CreateCustomAvailabilityDto {
   @IsString()
   @IsNotEmpty()
   @Matches(DATE_FORMAT, { message: 'date must be in YYYY-MM-DD format' })
-  date: string;
+  date!: string;
 
   @IsString()
   @IsNotEmpty()
   @Matches(TIME_FORMAT, { message: 'startTime must be in HH:MM 24-hour format' })
-  startTime: string;
+  startTime!: string;
 
   @IsString()
   @IsNotEmpty()
   @Matches(TIME_FORMAT, { message: 'endTime must be in HH:MM 24-hour format' })
-  endTime: string;
+  endTime!: string;
 }

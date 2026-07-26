@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { SchedulingConfigService } from './scheduling-config.service';
+import { SchedulingType } from '../enums/scheduling-type.enum';
 
 describe('SchedulingConfigService', () => {
   it('rejects a doctor trying to configure another doctor profile', async () => {
@@ -21,7 +22,7 @@ describe('SchedulingConfigService', () => {
     doctorProfileRepo.findOne.mockResolvedValueOnce({ id: 'doctor-b', user: { id: 'user-b' } });
 
     await expect(
-      service.configureScheduling('doctor-b', { schedulingType: 'STREAM', slotDuration: 15 }, 'user-a'),
+      service.configureScheduling('doctor-b', { schedulingType: SchedulingType.STREAM, slotDuration: 15 }, 'user-a'),
     ).rejects.toThrow(ForbiddenException);
   });
 });

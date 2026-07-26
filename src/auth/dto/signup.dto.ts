@@ -3,16 +3,16 @@ import { IsEmail, IsIn, IsNotEmpty, IsString, MinLength } from 'class-validator'
 export class SignupDto {
   @IsString()
   @IsNotEmpty({ message: 'Name is required' })
-  name: string;
+  name!: string;
 
   @IsEmail({}, { message: 'Invalid email address' })
-  email: string;
+  email!: string;
 
   @IsString()
   @MinLength(6, { message: 'Password must be at least 6 characters long' })
-  password: string;
+  password!: string;
 
   @IsString()
   @IsIn(['DOCTOR', 'PATIENT'], { message: 'Role must be either DOCTOR or PATIENT' })
-  role: string;
+  role!: string;
 }

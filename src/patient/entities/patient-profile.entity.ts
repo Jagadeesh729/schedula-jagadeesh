@@ -4,27 +4,27 @@ import { User } from '../../users/entities/user.entity';
 @Entity('patient_profiles')
 export class PatientProfile {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @OneToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @Column({ name: 'full_name' })
-  fullName: string;
+  fullName!: string;
 
   @Column()
-  age: number;
+  age!: number;
 
   @Column()
-  gender: string;
+  gender!: string;
 
   @Column({ name: 'contact_details' })
-  contactDetails: string;
+  contactDetails!: string;
 
   @Column({ name: 'basic_health_information', type: 'text', nullable: true })
   basicHealthInformation?: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 }
