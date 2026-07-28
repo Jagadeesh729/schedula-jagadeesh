@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Request,
   UseGuards,
@@ -21,7 +22,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('appointments')
+@Controller(['appointment', 'appointments'])
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}
 
@@ -33,6 +34,23 @@ export class AppointmentController {
     @Request() req: RequestWithUser,
   ) {
     return await this.appointmentService.bookAppointment(dto, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  @Get('my')
+  async getPatientAppointments(@Request() req: RequestWithUser) {
+    return await this.appointmentService.getPatientAppointments(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  @Patch(':id/cancel')
+  async cancelAppointment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: RequestWithUser,
+  ) {
+    return await this.appointmentService.cancelAppointment(id, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)

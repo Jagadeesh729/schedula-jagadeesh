@@ -8,6 +8,7 @@ import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
 import { PatientProfile } from '../../patient/entities/patient-profile.entity';
 import { RecurringAvailability } from '../../doctor/entities/recurring-availability.entity';
 import { CustomAvailability } from '../../doctor/entities/custom-availability.entity';
+import { AppointmentStatus } from '../enums/appointment-status.enum';
 
 describe('AppointmentService Unit Tests', () => {
   let service: AppointmentService;
@@ -76,7 +77,7 @@ describe('AppointmentService Unit Tests', () => {
         id: '1',
         slotStartTime: '10:00',
         slotEndTime: '10:15',
-        status: 'CONFIRMED',
+        status: AppointmentStatus.CONFIRMED,
       } as Appointment,
     ];
     const slots = service.generateSlotsForWindow(
@@ -88,5 +89,24 @@ describe('AppointmentService Unit Tests', () => {
     );
     expect(slots[0].available).toBe(false);
     expect(slots[1].available).toBe(true);
+  });
+
+  it('should mark STREAM slot available if appointment is CANCELLED', () => {
+    const booked = [
+      {
+        id: '1',
+        slotStartTime: '10:00',
+        slotEndTime: '10:15',
+        status: AppointmentStatus.CANCELLED,
+      } as Appointment,
+    ];
+    const slots = service.generateSlotsForWindow(
+      '10:00',
+      '11:00',
+      15,
+      5,
+      booked,
+    );
+    expect(slots[0].available).toBe(true);
   });
 });
