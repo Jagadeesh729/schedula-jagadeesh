@@ -16,6 +16,7 @@ import { CustomAvailability } from '../../doctor/entities/custom-availability.en
 import { Weekday } from '../../doctor/enums/weekday.enum';
 import { CreateAppointmentDto } from '../dto/scheduling.dto';
 import { SchedulingType } from '../enums/scheduling-type.enum';
+import { AppointmentStatus } from '../enums/appointment-status.enum';
 
 export interface GeneratedStreamSlot {
   startTime: string;
@@ -70,6 +71,21 @@ export class AppointmentService {
       throw new BadRequestException(
         'Cannot book appointments for past dates or times',
       );
+    }
+  }
+
+  private validateDateTimeNotPast(dateStr: string, timeStr?: string): void {
+    const now = new Date();
+    if (timeStr) {
+      const target = new Date(`${dateStr}T${timeStr.slice(0, 5)}:00Z`);
+      const nowUtc = new Date(now.toISOString());
+      if (target < nowUtc) {
+        throw new BadRequestException(
+          'Cannot book or cancel appointments for past dates or times',
+        );
+      }
+    } else {
+      this.validateDateNotPast(dateStr);
     }
   }
 
@@ -171,7 +187,7 @@ export class AppointmentService {
 
       const isBooked = bookedAppointments.some((app) => {
         if (
-          app.status === 'CANCELLED' ||
+          app.status === AppointmentStatus.CANCELLED ||
           !app.slotStartTime ||
           !app.slotEndTime
         ) {
@@ -218,7 +234,7 @@ export class AppointmentService {
     }
 
     const bookedAppointments = await this.appointmentRepo.find({
-      where: { doctorId: doctor.id, date, status: 'CONFIRMED' },
+      where: { doctorId: doctor.id, date, status: AppointmentStatus.CONFIRMED },
     });
 
     if (config.schedulingType === SchedulingType.STREAM) {
@@ -280,7 +296,6 @@ export class AppointmentService {
     dto: CreateAppointmentDto,
     patientUserId: string,
   ): Promise<Appointment> {
-    this.validateDateNotPast(dto.date);
     const doctor = await this.resolveDoctorProfile(dto.doctorId);
     const patient = await this.resolvePatientProfile(patientUserId);
 
@@ -291,10 +306,35 @@ export class AppointmentService {
       throw new NotFoundException('Doctor scheduling configuration not found');
     }
 
-    if (config.schedulingType === SchedulingType.STREAM) {
+    const effectiveStrategy = dto.scheduleType ?? config.schedulingType;
+
+    // Handle root-level startTime/endTime DTO shortcut
+    if (!dto.slot && dto.startTime && dto.endTime) {
+      dto.slot = { startTime: dto.startTime, endTime: dto.endTime };
+    }
+
+    if (effectiveStrategy === SchedulingType.STREAM) {
       if (!dto.slot || !dto.slot.startTime || !dto.slot.endTime) {
         throw new BadRequestException(
           'slot object with startTime and endTime is required for STREAM scheduling',
+        );
+      }
+
+      this.validateDateTimeNotPast(dto.date, dto.slot.startTime);
+
+      // Validate that requested slot is a valid generated slot
+      const availabilitySlots = (await this.getDoctorAvailability(
+        doctor.id,
+        dto.date,
+      )) as GeneratedStreamSlot[];
+      const isValidSlot = availabilitySlots.some(
+        (s) =>
+          s.startTime === dto.slot!.startTime &&
+          s.endTime === dto.slot!.endTime,
+      );
+      if (!isValidSlot) {
+        throw new BadRequestException(
+          'Requested slot is not a valid time slot for this doctor',
         );
       }
 
@@ -304,7 +344,7 @@ export class AppointmentService {
           date: dto.date,
           slotStartTime: dto.slot.startTime,
           slotEndTime: dto.slot.endTime,
-          status: 'CONFIRMED',
+          status: AppointmentStatus.CONFIRMED,
         },
       });
 
@@ -319,16 +359,18 @@ export class AppointmentService {
         date: dto.date,
         slotStartTime: dto.slot.startTime,
         slotEndTime: dto.slot.endTime,
-        status: 'CONFIRMED',
+        status: AppointmentStatus.CONFIRMED,
       });
 
       return await this.appointmentRepo.save(appointment);
-    } else if (config.schedulingType === SchedulingType.WAVE) {
+    } else if (effectiveStrategy === SchedulingType.WAVE) {
       if (!dto.window) {
         throw new BadRequestException(
           'window string is required for WAVE scheduling',
         );
       }
+
+      this.validateDateNotPast(dto.date);
 
       const maxCapacity = config.maxCapacity;
       if (!maxCapacity || maxCapacity <= 0) {
@@ -342,7 +384,9 @@ export class AppointmentService {
           .where('appointment.doctorId = :doctorId', { doctorId: doctor.id })
           .andWhere('appointment.date = :date', { date: dto.date })
           .andWhere('appointment.window = :window', { window: dto.window })
-          .andWhere('appointment.status = :status', { status: 'CONFIRMED' })
+          .andWhere('appointment.status = :status', {
+            status: AppointmentStatus.CONFIRMED,
+          })
           .getMany();
 
         const hasDuplicate = existingBookings.some(
@@ -360,7 +404,16 @@ export class AppointmentService {
           );
         }
 
-        const token = existingBookings.length + 1;
+        // Lowest missing positive integer algorithm for collision-free tokens
+        const activeTokens = new Set(
+          existingBookings
+            .map((b) => b.token)
+            .filter((t): t is number => t !== null && t !== undefined),
+        );
+        let token = 1;
+        while (activeTokens.has(token)) {
+          token++;
+        }
 
         const appointment = manager.create(Appointment, {
           doctorId: doctor.id,
@@ -369,7 +422,7 @@ export class AppointmentService {
           date: dto.date,
           window: dto.window,
           token,
-          status: 'CONFIRMED',
+          status: AppointmentStatus.CONFIRMED,
         });
 
         try {
@@ -384,6 +437,123 @@ export class AppointmentService {
     }
 
     throw new BadRequestException('Invalid scheduleType');
+  }
+
+  async getPatientAppointments(
+    patientUserId: string,
+  ): Promise<Record<string, unknown>[]> {
+    const patient = await this.resolvePatientProfile(patientUserId);
+    const appointments = await this.appointmentRepo.find({
+      where: { patientId: patient.id },
+      relations: { doctor: { user: true } },
+      order: { date: 'DESC', createdAt: 'DESC' },
+    });
+
+    return appointments.map((app) => ({
+      appointmentId: app.id,
+      id: app.id,
+      doctorId: app.doctorId,
+      patientId: app.patientId,
+      scheduleType: app.scheduleType,
+      date: app.date,
+      status: app.status,
+      token: app.token ?? null,
+      window: app.window ?? null,
+      slot:
+        app.slotStartTime && app.slotEndTime
+          ? { startTime: app.slotStartTime, endTime: app.slotEndTime }
+          : null,
+      startTime: app.slotStartTime ?? null,
+      endTime: app.slotEndTime ?? null,
+      doctor: {
+        id: app.doctor.id,
+        name: app.doctor.fullName ?? app.doctor.user?.name ?? '',
+        specialization: app.doctor.specialization,
+        email: app.doctor.user?.email ?? '',
+      },
+      createdAt: app.createdAt,
+    }));
+  }
+
+  async getDoctorAppointments(
+    doctorUserId: string,
+  ): Promise<Record<string, unknown>[]> {
+    const doctor = await this.resolveDoctorProfile(doctorUserId);
+    const appointments = await this.appointmentRepo.find({
+      where: { doctorId: doctor.id },
+      relations: { patient: { user: true } },
+      order: { date: 'DESC', createdAt: 'DESC' },
+    });
+
+    return appointments.map((app) => ({
+      appointmentId: app.id,
+      id: app.id,
+      doctorId: app.doctorId,
+      patientId: app.patientId,
+      scheduleType: app.scheduleType,
+      date: app.date,
+      status: app.status,
+      token: app.token ?? null,
+      window: app.window ?? null,
+      slot:
+        app.slotStartTime && app.slotEndTime
+          ? { startTime: app.slotStartTime, endTime: app.slotEndTime }
+          : null,
+      startTime: app.slotStartTime ?? null,
+      endTime: app.slotEndTime ?? null,
+      patient: app.patient
+        ? {
+            id: app.patient.id,
+            name: app.patient.fullName ?? app.patient.user?.name ?? '',
+            email: app.patient.user?.email ?? '',
+            phone: app.patient.contactDetails ?? '',
+          }
+        : null,
+      createdAt: app.createdAt,
+    }));
+  }
+
+  async cancelAppointment(
+    appointmentId: string,
+    patientUserId: string,
+  ): Promise<Record<string, unknown>> {
+    const appointment = await this.appointmentRepo.findOne({
+      where: { id: appointmentId },
+      relations: { patient: { user: true } },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    if (
+      !appointment.patient ||
+      !appointment.patient.user ||
+      appointment.patient.user.id !== patientUserId
+    ) {
+      throw new ForbiddenException(
+        'You are not authorized to cancel this appointment',
+      );
+    }
+
+    if (appointment.status === AppointmentStatus.CANCELLED) {
+      throw new BadRequestException('Appointment is already cancelled');
+    }
+
+    this.validateDateTimeNotPast(
+      appointment.date,
+      appointment.slotStartTime ?? undefined,
+    );
+
+    appointment.status = AppointmentStatus.CANCELLED;
+    const saved = await this.appointmentRepo.save(appointment);
+
+    return {
+      appointmentId: saved.id,
+      id: saved.id,
+      status: saved.status,
+      message: 'Appointment cancelled successfully',
+    };
   }
 
   async getAppointmentById(
