@@ -10,6 +10,7 @@ import {
 import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
 import { PatientProfile } from '../../patient/entities/patient-profile.entity';
 import { SchedulingType } from '../enums/scheduling-type.enum';
+import { AppointmentStatus } from '../enums/appointment-status.enum';
 
 @Entity('appointments')
 export class Appointment {
@@ -48,8 +49,8 @@ export class Appointment {
   @Column({ type: 'int', nullable: true })
   token?: number;
 
-  @Column({ type: 'varchar', default: 'CONFIRMED' })
-  status!: string;
+  @Column({ type: 'varchar', default: AppointmentStatus.CONFIRMED })
+  status!: AppointmentStatus;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

@@ -59,14 +59,28 @@ export class CreateAppointmentDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
   date!: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(SchedulingType)
-  scheduleType!: SchedulingType;
+  scheduleType?: SchedulingType;
 
   @IsOptional()
   @ValidateNested()
   @Type(() => SlotDto)
   slot?: SlotDto;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: 'startTime must be HH:MM format',
+  })
+  startTime?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: 'endTime must be HH:MM format',
+  })
+  endTime?: string;
 
   @IsOptional()
   @IsString()

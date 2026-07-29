@@ -23,12 +23,19 @@ interface RequestWithUser {
   };
 }
 
-@Controller('doctors')
+@Controller(['doctors', 'doctor'])
 export class DoctorsSchedulingController {
   constructor(
     private readonly configService: SchedulingConfigService,
     private readonly appointmentService: AppointmentService,
   ) {}
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DOCTOR')
+  @Get('appointments')
+  async getDoctorAppointments(@Request() req: RequestWithUser) {
+    return await this.appointmentService.getDoctorAppointments(req.user.id);
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('DOCTOR', 'ADMIN')
