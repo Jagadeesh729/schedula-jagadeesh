@@ -8,7 +8,7 @@ export class CreateAdvancedScheduling1784900000001
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "scheduling_configs" (
-        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "doctor_id" uuid NOT NULL,
         "scheduling_type" character varying NOT NULL,
         "slot_duration" integer,
@@ -23,7 +23,7 @@ export class CreateAdvancedScheduling1784900000001
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "appointments" (
-        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "doctor_id" uuid NOT NULL,
         "patient_id" uuid,
         "schedule_type" character varying NOT NULL,
@@ -66,13 +66,13 @@ export class CreateAdvancedScheduling1784900000001
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS "idx_wave_window_patient_unique"
       ON "appointments" ("doctor_id", "date", "window", "patient_id")
-      WHERE status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL;
+      WHERE status = 'CONFIRMED' AND "window" IS NOT NULL AND patient_id IS NOT NULL;
     `);
 
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS "idx_wave_window_token_unique"
       ON "appointments" ("doctor_id", "date", "window", "token")
-      WHERE status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL;
+      WHERE status = 'CONFIRMED' AND "window" IS NOT NULL AND token IS NOT NULL;
     `);
   }
 
