@@ -15,11 +15,16 @@ import { CreateAdvancedScheduling1784900000001 } from './migrations/178490000000
 
 dotenv.config();
 
+const isProductionOrSsl =
+  process.env.DATABASE_URL?.includes('sslmode=require') ||
+  process.env.NODE_ENV === 'production';
+
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL || 'postgresql://postgres:postgres123@localhost:5432/schedula',
+      ssl: isProductionOrSsl ? { rejectUnauthorized: false } : false,
       autoLoadEntities: true,
       synchronize: false, // Disables automatic schema sync (required for Task 4)
       migrations: [
