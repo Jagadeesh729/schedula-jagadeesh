@@ -20,6 +20,7 @@ Schedula is a production-grade healthcare booking, scheduling, and availability 
 - [Core Functional Modules](#core-functional-modules)
 - [Tech Stack & Dependencies](#tech-stack--dependencies)
 - [API Endpoint Reference (21 Endpoints)](#api-endpoint-reference-21-endpoints)
+- [Sample API Request & Response Payloads](#sample-api-request--response-payloads)
 - [Elastic Doctor Scheduling Architecture (Day 11)](#elastic-doctor-scheduling-architecture-day-11)
 - [Database Schema & Migration System](#database-schema--migration-system)
 - [Concurrency & Transactional Protections](#concurrency--transactional-protections)
@@ -125,6 +126,90 @@ The backend is engineered following a clean **4-tier NestJS architecture**, enfo
 | **19** | Appointments | `PATCH` | `/appointment/:id/cancel` | Cancel an appointment for logged-in patient | Yes | `ROLE=PATIENT` |
 | **20** | Appointments | `GET` | `/doctor/appointments` | List appointments for logged-in doctor | Yes | `ROLE=DOCTOR` |
 | **21** | Appointments | `GET` | `/appointment/:id` | Fetch details of specific appointment by ID | Yes | Authenticated User |
+
+---
+
+## Sample API Request & Response Payloads
+
+### 1. User Registration (`POST /auth/signup`)
+```json
+// Request Body
+{
+  "email": "doctor@hospital.com",
+  "password": "Password123!",
+  "role": "DOCTOR"
+}
+
+// Response (210 Created)
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": "a1b2c3d4-0000-1111-2222-333344445555",
+    "email": "doctor@hospital.com",
+    "role": "DOCTOR",
+    "createdAt": "2026-08-03T10:00:00.000Z"
+  }
+}
+```
+
+### 2. User Authentication (`POST /auth/login`)
+```json
+// Request Body
+{
+  "email": "doctor@hospital.com",
+  "password": "Password123!"
+}
+
+// Response (200 OK)
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "a1b2c3d4-0000-1111-2222-333344445555",
+    "email": "doctor@hospital.com",
+    "role": "DOCTOR"
+  }
+}
+```
+
+### 3. Doctor Scheduling Strategy (`POST /doctors/:doctorId/scheduling`)
+```json
+// STREAM Strategy Request Body
+{
+  "type": "STREAM",
+  "slotDurationMinutes": 15,
+  "bufferTimeMinutes": 5
+}
+
+// WAVE Strategy Request Body
+{
+  "type": "WAVE",
+  "windowDurationMinutes": 60,
+  "maxCapacityPerWindow": 5
+}
+```
+
+### 4. Book Appointment (`POST /appointment`)
+```json
+// Request Body (Patient Role)
+{
+  "doctorId": "a1b2c3d4-0000-1111-2222-333344445555",
+  "appointmentDate": "2026-08-10",
+  "startTime": "10:00",
+  "endTime": "10:15"
+}
+
+// Response (201 Created)
+{
+  "id": "f9e8d7c6-5555-4444-3333-222211110000",
+  "doctorId": "a1b2c3d4-0000-1111-2222-333344445555",
+  "patientId": "b2c3d4e5-1111-2222-3333-444455556666",
+  "appointmentDate": "2026-08-10",
+  "startTime": "10:00",
+  "endTime": "10:15",
+  "status": "CONFIRMED",
+  "tokenNumber": 1
+}
+```
 
 ---
 
