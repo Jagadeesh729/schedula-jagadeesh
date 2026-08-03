@@ -261,40 +261,69 @@ node dist/main
 
 ---
 
-## API Reference
+## API Reference (Full 21 Endpoint Master Table)
 
-### 1. Authentication (`/auth`)
-* `POST /auth/signup`: Register new user (`DOCTOR` or `PATIENT`).
-* `POST /auth/login`: Authenticate credentials and receive signed JWT.
+| # | Category | Method | Endpoint | Description | Requires Auth | Allowed Roles |
+| :- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | Auth | `POST` | `/auth/signup` | Register new user (doctor or patient) | No | Public |
+| **2** | Auth | `POST` | `/auth/login` | Login user and return signed JWT token | No | Public |
+| **3** | Doctor | `POST` | `/doctor/profile` | Create doctor profile linked to user | Yes | `ROLE=DOCTOR` |
+| **4** | Doctor | `GET` | `/doctor/profile` | Fetch doctor profile of logged-in doctor | Yes | `ROLE=DOCTOR` |
+| **5** | Doctor | `PATCH` | `/doctor/profile` | Update fields in doctor profile | Yes | `ROLE=DOCTOR` |
+| **6** | Patient | `POST` | `/patient/profile` | Create patient profile linked to user | Yes | `ROLE=PATIENT` |
+| **7** | Patient | `GET` | `/patient/profile` | Fetch patient profile of logged-in patient | Yes | `ROLE=PATIENT` |
+| **8** | Patient | `PATCH` | `/patient/profile` | Update fields in patient profile | Yes | `ROLE=PATIENT` |
+| **9** | Doctor Availability | `POST` | `/doctor/availability` | Create recurring weekly availability slot | Yes | `ROLE=DOCTOR` |
+| **10** | Doctor Availability | `GET` | `/doctor/availability` | List recurring availability for logged-in doctor | Yes | `ROLE=DOCTOR` |
+| **11** | Doctor Availability | `PATCH` | `/doctor/availability/:id` | Update recurring availability record by ID | Yes | `ROLE=DOCTOR` |
+| **12** | Doctor Availability | `DELETE` | `/doctor/availability/:id` | Delete recurring availability record by ID | Yes | `ROLE=DOCTOR` |
+| **13** | Doctor Availability | `POST` | `/doctor/availability/override` | Create custom date availability override | Yes | `ROLE=DOCTOR` |
+| **14** | Doctor Availability | `GET` | `/doctor/availability/date` | Get dynamic availability for date (`?date=YYYY-MM-DD`) | Yes | `DOCTOR` / `PATIENT` |
+| **15** | Doctor Scheduling Config | `POST` | `/doctors/:doctorId/scheduling` | Configure strategy (`STREAM` / `WAVE`, duration, capacity) | Yes | `DOCTOR` / `ADMIN` |
+| **16** | Doctor Scheduling Config | `GET` | `/doctors/:doctorId/availability` | Fetch generated STREAM slots or WAVE windows | No | Public / Patient |
+| **17** | Appointments | `POST` | `/appointment` | Book appointment based on doctor strategy & slot | Yes | `ROLE=PATIENT` |
+| **18** | Appointments | `GET` | `/appointment/my` | List appointments for logged-in patient | Yes | `ROLE=PATIENT` |
+| **19** | Appointments | `PATCH` | `/appointment/:id/cancel` | Cancel an appointment for logged-in patient | Yes | `ROLE=PATIENT` |
+| **20** | Appointments | `GET` | `/doctor/appointments` | List appointments for logged-in doctor | Yes | `ROLE=DOCTOR` |
+| **21** | Appointments | `GET` | `/appointment/:id` | Fetch details of specific appointment by ID | Yes | Authenticated User |
 
-### 2. Doctor Profile (`/doctor/profile`)
-* `POST /doctor/profile`: Onboard doctor details (`DOCTOR` role).
-* `GET /doctor/profile`: Fetch doctor profile (`DOCTOR` role).
-* `PATCH /doctor/profile`: Update doctor profile (`DOCTOR` role).
+---
 
-### 3. Patient Profile (`/patient/profile`)
-* `POST /patient/profile`: Onboard patient intake details (`PATIENT` role).
-* `GET /patient/profile`: Fetch patient profile (`PATIENT` role).
-* `PATCH /patient/profile`: Update patient profile (`PATIENT` role).
+## ⚡ Day 11: Elastic Doctor Scheduling Architecture (Shrink & Expand)
 
-### 4. Doctor Availability (`/doctor/availability`)
-* `POST /doctor/availability`: Set recurring weekly availability.
-* `GET /doctor/availability`: Get recurring weekly slots.
-* `GET /doctor/availability/date?date=YYYY-MM-DD`: Resolve effective availability for date.
-* `PATCH /doctor/availability/:id`: Update recurring slot.
-* `DELETE /doctor/availability/:id`: Delete recurring slot.
-* `POST /doctor/availability/override`: Set custom date override.
+Elastic Scheduling allows a doctor to dynamically update working hours without corrupting existing patient bookings.
 
-### 5. Advanced Doctor Scheduling (`/doctors/:doctorId/scheduling`)
-* `POST /doctors/:doctorId/scheduling`: Configure strategy (`STREAM` or `WAVE`).
-* `GET /doctors/:doctorId/availability?date=YYYY-MM-DD`: Fetch generated slots (`STREAM`) or capacity windows (`WAVE`).
+### 1. EXPAND Flow (Working Hours Increased)
+* **Behavior**: When a doctor extends their start or end time (e.g., `10:00 AM – 12:00 PM` $\rightarrow$ `09:00 AM – 12:00 PM`), the system:
+  1. Updates doctor availability in PostgreSQL.
+  2. Generates new appointment slots/wave capacity only for the newly added window (`09:00 AM – 10:00 AM`).
+  3. Preserves all existing booked appointments (`10:00 AM – 12:00 PM`) 10:00% untouched.
+  4. Immediately publishes new slots for patient booking.
 
-### 6. Appointment Booking & Management (`/appointment`, `/doctor/appointments`)
-* `POST /appointment`: Book STREAM slot or WAVE window (`PATIENT` role).
-* `GET /appointment/my`: Fetch patient's appointments with doctor details (`PATIENT` role).
-* `GET /doctor/appointments`: Fetch doctor's assigned patient appointments (`DOCTOR` role).
-* `PATCH /appointment/:id/cancel`: Cancel appointment (`PATIENT` owner only).
-* `GET /appointment/:id`: Fetch specific appointment by ID (`PATIENT` owner or `DOCTOR` assigned).
+### 2. SHRINK Flow (Working Hours Decreased)
+* **Behavior**: When a doctor reduces working hours (e.g., ending at `11:00 AM` instead of `12:00 PM`), the system:
+  1. **Conflict Detection**: Queries database for active bookings in the removed window (`11:00 AM – 12:00 PM`).
+  2. **Zero Conflicts**: Updates availability record directly.
+  3. **Conflicts Exist**: Applies automated resolution pipeline:
+     - **Auto-Rescheduling**: Searches for nearest available slot or wave window for affected patients.
+     - **If Slot Found**: Moves appointment to new slot and notifies patient.
+     - **If No Slot Available**: Flags for manual patient rescheduling or cancels with notification as a last resort.
+
+```mermaid
+graph TD
+    A[Doctor Request: Update Availability Start/End Time] --> B{Determine Change Type}
+    B -->|EXPAND: Hours Increased| C[Update Doctor Availability Record]
+    C --> D[Generate New Slots for Added Time Window]
+    D --> E[Preserve All Existing Bookings Unchanged]
+    E --> F[Publish New Slots for Patient Booking]
+
+    B -->|SHRINK: Hours Decreased| G{Check Booked Appointments in Removed Window}
+    G -->|Zero Bookings| H[Update Availability Record Directly]
+    G -->|Bookings Exist| I[Search Nearest Available Slot / Wave Window]
+    I --> J{Suitable Free Slot Found?}
+    J -->|Yes| K[Auto-Reschedule Patient to New Slot & Send Notification]
+    J -->|No| L[Flag for Patient Reschedule / Cancel as Last Resort & Send Notification]
+```
 
 ---
 
@@ -328,12 +357,11 @@ node run-tests.js
 
 ---
 
-## Flowcharts
+## Video Walkthroughs & Documentation Links
 
-Visual sequence flowcharts are documented in [`docs/FLOWCHARTS.md`](./docs/FLOWCHARTS.md), illustrating:
-1. `STREAM` Exact Slot Generation & Booking Flow
-2. `WAVE` Window Capacity & Sequential Token Allocation Flow
-3. Appointment Cancellation & Re-availability Lifecycle
+* 🎥 **Day 9 Deployment Loom Video**: [`https://www.loom.com/share/4ec221aca2e640fd8e92f50d65d667ce`](https://www.loom.com/share/4ec221aca2e640fd8e92f50d65d667ce)
+* 📊 **Google Sheets API Endpoint Documentation**: [Hospital Backend API Documentation](https://docs.google.com/spreadsheets/d/10eVEnYG-3JAC4MrIJZ0CaLHuIdU8tPBY/edit?usp=sharing)
+* 📐 **System Flowcharts**: See [`docs/FLOWCHARTS.md`](./docs/FLOWCHARTS.md)
 
 ---
 
