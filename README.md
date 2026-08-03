@@ -3,115 +3,104 @@
 [![Live Production API](https://img.shields.io/badge/Render-Live_Production-230433?style=for-the-badge&logo=render&logoColor=white)](https://schedula-backend-45oj.onrender.com/)
 [![PostgreSQL](https://img.shields.io/badge/Neon_PostgreSQL-v17_TLS-00E599?style=for-the-badge&logo=postgresql&logoColor=white)](https://schedula-backend-45oj.onrender.com/)
 [![NestJS](https://img.shields.io/badge/NestJS-v11-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](./LICENSE)
 
-Schedula is a robust, production-grade healthcare booking, scheduling, and availability management API built with **NestJS**, **TypeScript**, **TypeORM**, and **PostgreSQL**.
+Schedula is a production-grade healthcare booking, scheduling, and availability management API built with **NestJS**, **TypeScript**, **TypeORM**, and **PostgreSQL**.
 
-### 🌐 Production Infrastructure
+### 🌐 Live Production Infrastructure
 * **Live Public API Base URL**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)
-* **Hosted Database**: Neon PostgreSQL (AWS US East 1, Postgres v17 over TLS)
+* **Hosted Cloud Database**: Neon PostgreSQL (AWS US East 1, Postgres v17 over TLS)
 * **GitHub Repository**: [`https://github.com/Jagadeesh729/schedula-jagadeesh`](https://github.com/Jagadeesh729/schedula-jagadeesh)
+
+---
+
+## 📌 Table of Contents
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Core Functional Modules](#core-functional-modules)
+- [Tech Stack & Dependencies](#tech-stack--dependencies)
+- [API Endpoint Reference (21 Endpoints)](#api-endpoint-reference-21-endpoints)
+- [Elastic Doctor Scheduling Architecture (Day 11)](#elastic-doctor-scheduling-architecture-day-11)
+- [Database Schema & Migration System](#database-schema--migration-system)
+- [Concurrency & Transactional Protections](#concurrency--transactional-protections)
+- [Installation & Local Setup](#installation--local-setup)
+- [Automated Testing & Verification](#automated-testing--verification)
+- [Technical References](#technical-references)
 
 ---
 
 ## Overview
 
-Schedula simplifies doctor-patient interactions by replacing rigid clinic booking systems with dynamic availability management, strategy-driven slot generation, instant double-booking prevention, collision-free token allocation, and role-based clinical onboarding.
+Schedula simplifies doctor-patient interactions by replacing rigid clinic booking systems with dynamic availability management, strategy-driven slot generation (`STREAM` & `WAVE`), instant double-booking prevention, collision-free token allocation, and role-based clinical onboarding.
 
-The backend is built around a clean, 4-tier NestJS architecture enforcing separation of concerns, strong DTO domain validation, idempotent database migrations, pessimistic transactional locking, and explicit resource ownership boundaries.
+The backend is engineered following a clean **4-tier NestJS architecture**, enforcing separation of concerns, strong DTO domain validation (`class-validator`), idempotent database migrations (`synchronize: false`), pessimistic row-level locking (`pessimistic_write`), and strict resource ownership boundaries.
 
 ---
 
-## Key System Features
+## System Architecture
 
-### 1. Authentication & Authorization
-* **JWT Authentication**: User registration (`/auth/signup`) and secure authentication (`/auth/login`) issuing signed JWT tokens.
-* **Bcrypt Hashing**: Secure password hashing prior to persistence.
-* **Role-Based Access Control (RBAC)**: `JwtAuthGuard` and `RolesGuard` protecting endpoints based on `@Roles('DOCTOR')` and `@Roles('PATIENT')`.
+```text
+┌──────────────┐     ┌──────────────────┐     ┌────────────────┐     ┌──────────────────┐     ┌──────────────┐
+│  HTTP Client │ ──► │ Controller Layer │ ──► │ Service Layer  │ ──► │ TypeORM Repos    │ ──► │ PostgreSQL   │
+│  (Postman)   │     │ (DTO Validation) │     │ (Domain Logic) │     │ (Database Layer) │     │ (Neon DB)    │
+└──────────────┘     └──────────────────┘     └────────────────┘     └──────────────────┘     └──────────────┘
+```
 
-### 2. Profile Onboarding & Management
-* **Doctor Profile Management**: Professional onboarding (`POST`, `GET`, `PATCH` under `/doctor/profile`) covering specialization, experience, qualification, consultation fees, and bio.
-* **Patient Profile Management**: Clinical intake onboarding (`POST`, `GET`, `PATCH` under `/patient/profile`) recording age, gender, contact details, and basic health information.
+1. **Controller Layer**: Handles HTTP requests, path parameters, DTO validation, and role authorization (`JwtAuthGuard`, `RolesGuard`). Contains zero business or database logic.
+2. **Service Layer**: Implements domain logic, interval arithmetic, calendar date reconstruction, token allocation algorithms, ownership verification, and transactional isolation.
+3. **Repository Layer**: TypeORM repositories managing entity persistence, custom queries, and database transactions.
+4. **Database Layer**: PostgreSQL database operating with explicit schema migrations, filtered partial unique indexes, and foreign keys (`synchronize: false`).
+
+---
+
+## Core Functional Modules
+
+### 1. Authentication & Role-Based Authorization
+* **JWT Authentication**: Secure user registration (`/auth/signup`) and authentication (`/auth/login`) issuing signed JWT tokens.
+* **Bcrypt Password Security**: Password hashing with custom salt rounds prior to persistence.
+* **Role-Based Access Control (RBAC)**: Custom `@Roles('DOCTOR')` and `@Roles('PATIENT')` decorators enforced by `RolesGuard`.
+
+### 2. Clinical Profile Onboarding & Management
+* **Doctor Profile Management**: Professional onboarding (`POST`, `GET`, `PATCH` under `/doctor/profile`) capturing specialization, experience, qualification, consultation fees, and bio.
+* **Patient Profile Management**: Clinical intake onboarding (`POST`, `GET`, `PATCH` under `/patient/profile`) recording age, gender, contact details, and medical intake notes.
 
 ### 3. Doctor Availability Engine
 * **Weekly Recurring Schedules**: Configure recurring daily slots (`POST`, `GET`, `PATCH`, `DELETE` under `/doctor/availability`) for specific weekdays (`Monday`–`Sunday`).
 * **Custom Date Overrides**: Override weekly recurring availability on specific calendar dates (`POST /doctor/availability/override`) for holidays or special clinic hours.
-* **Dynamic Date Availability Lookup**: Query available slots for any specific date (`GET /doctor/availability/date?date=YYYY-MM-DD`). Overrides automatically take precedence over recurring schedules.
-* **Interval Overlap Validation**: Stateless algorithm preventing overlapping slot creation while permitting valid adjacent slots (e.g., `09:00–10:00` followed by `10:00–11:00`).
+* **Dynamic Date Lookup**: Query available slots for any calendar date (`GET /doctor/availability/date?date=YYYY-MM-DD`). Overrides automatically take precedence over recurring schedules.
+* **Stateless Overlap Validation**: Algorithmic validation preventing overlapping slot creation while permitting valid adjacent slots (e.g. `09:00–10:00` followed by `10:00–11:00`).
 
 ### 4. Advanced Doctor Scheduling (`STREAM` & `WAVE`)
-* **Strategy Selection**: Doctors select between `STREAM` (fixed appointment times) and `WAVE` (time window capacity with token numbers).
-* **STREAM Strategy**: Fixed slot duration and optional buffer time (e.g. 15-min slots + 5-min buffer). Deterministically generates non-overlapping slots.
-* **WAVE Strategy**: Window-based booking with max patient capacity (e.g., 10:00–11:00, max capacity = 5). Transactionally assigns incremental tokens (`1, 2, 3...`).
+* **STREAM Strategy (Exact Appointment Times)**: Fixed slot duration and optional buffer time (e.g. 15-min slots + 5-min buffer). Deterministically generates non-overlapping slots.
+* **WAVE Strategy (Token-Based Window Capacity)**: Time window booking with max patient capacity (e.g., 10:00 AM – 11:00 AM, max capacity = 5). Transactionally assigns incremental tokens (`1, 2, 3...`).
 
-### 5. Elastic Doctor Scheduling Architecture (Shrink & Expand)
-* **EXPAND Flow (Hours Increased)**: When working hours expand, new slots/capacity are generated for the added window without modifying existing bookings.
-* **SHRINK Flow (Hours Decreased)**: When working hours shrink, system queries active bookings in the removed window. If bookings exist, automated relocation or reschedule flagging takes effect.
+### 5. Elastic Doctor Scheduling (Shrink & Expand)
+* **EXPAND Operation**: When working hours increase, new slots/capacity are generated for the added window without modifying existing bookings.
+* **SHRINK Operation**: When working hours decrease, system queries active bookings in the removed window. If bookings exist, automated relocation or reschedule flagging takes effect.
 
-### 6. Appointment Booking & Concurrency Protection
-* **Polymorphic Appointment Booking (`POST /appointment`)**: Book available STREAM slots or WAVE windows. Rejects past dates/times (`400`), un-generated slots (`400`), overbooking (`409`), and double-booking attempts (`409`).
-* **Patient & Doctor Views**: Dedicated endpoints (`GET /appointment/my`, `GET /doctor/appointments`) for patient and doctor management.
-* **Appointment Cancellation (`PATCH /appointment/:id/cancel`)**: Authenticated owner cancellation with IDOR protection. Restores STREAM slot availability and frees up WAVE window capacity.
-
----
-
-## Tech Stack
-
-| Layer | Technology | Version |
-|---|---|---|
-| **Framework** | [NestJS](https://nestjs.com/) | `^11.0.1` |
-| **Language** | [TypeScript](https://www.typescriptlang.org/) | `^5.7.3` |
-| **Runtime** | [Node.js](https://nodejs.org/) | `v20+` / `v24+` |
-| **Database** | [PostgreSQL](https://www.postgresql.org/) | `v17` |
-| **ORM** | [TypeORM](https://typeorm.io/) | `^1.1.0` |
-| **Authentication** | Passport JWT (`passport-jwt`, `@nestjs/jwt`) | `^11.0.2` |
-| **Password Security**| `bcrypt` | `^6.0.0` |
-| **Validation** | `class-validator`, `class-transformer` | `^0.15.1` |
+### 6. Appointment Booking & Management
+* **Polymorphic Booking Endpoint (`POST /appointment`)**: Book available STREAM slots or WAVE windows. Rejects past dates/times (`400`), un-generated slots (`400`), overbooking (`409`), and double-booking attempts (`409`).
+* **Patient & Doctor Portals**: Dedicated endpoints (`GET /appointment/my`, `GET /doctor/appointments`) returning patient and doctor appointment schedules with full intake metadata.
+* **IDOR-Protected Cancellation (`PATCH /appointment/:id/cancel`)**: Authenticated owner cancellation with resource ownership checks. Automatically restores STREAM slot availability and frees up WAVE window capacity.
 
 ---
 
-## Architecture & Database Design
+## Tech Stack & Dependencies
 
-### 4-Tier Architecture
-```text
-HTTP Client ──► Controller Layer ──► Service Layer ──► Repository / Entity ──► PostgreSQL DB
-```
-
-### Concurrency & Database Protections
-1. **Pessimistic Write Locking (`pessimistic_write`)**: WAVE window token allocations execute inside database transactions with row-level locks on existing active window appointments.
-2. **Lowest Missing Positive Integer Token Allocation**: Dynamically fills token gaps created by cancellations without token collision.
-3. **Status-Filtered Partial Unique Indexes**:
-   - `idx_wave_window_patient_unique`: Enforces single active booking per patient per wave window (`WHERE status = 'CONFIRMED'`).
-   - `idx_wave_window_token_unique`: Guarantees active token uniqueness (`WHERE status = 'CONFIRMED'`).
-
----
-
-## Folder Structure
-
-```text
-schedula-jagadeesh/
-├── docs/                               # Mermaid sequence flowcharts & diagrams
-│   └── FLOWCHARTS.md
-├── src/                                # Source code
-│   ├── main.ts                         # Application bootstrap entry point
-│   ├── app.module.ts                   # Root application module
-│   ├── auth/                           # Authentication module (JWT, bcrypt, DTOs)
-│   ├── doctor/                         # Doctor Profile & Availability module
-│   ├── patient/                        # Patient Profile module
-│   ├── scheduling/                     # Advanced Scheduling & Appointment module
-│   ├── users/                          # User entity module
-│   ├── guards/                         # JwtAuthGuard, RolesGuard
-│   ├── decorators/                     # Custom Decorators (@Roles)
-│   └── migrations/                     # Code-first DB Migration Scripts
-├── run-tests.js                        # Core regression integration test suite (28 scenarios)
-├── test-advanced-scheduling.js        # STREAM & WAVE concurrency test suite (26 scenarios)
-├── test-appointment-management.js     # Appointment booking integration suite (19 scenarios)
-├── package.json                        # Project metadata and dependencies
-└── tsconfig.json                       # TypeScript compiler configuration
-```
+| Layer | Technology | Version | Description |
+|---|---|---|---|
+| **Framework** | [NestJS](https://nestjs.com/) | `^11.0.1` | Enterprise Node.js framework |
+| **Language** | [TypeScript](https://www.typescriptlang.org/) | `^5.7.3` | Strongly-typed JavaScript |
+| **Runtime** | [Node.js](https://nodejs.org/) | `v20+` / `v24+` | JavaScript runtime environment |
+| **Database** | [PostgreSQL](https://www.postgresql.org/) | `v17` | Cloud Neon PostgreSQL DB |
+| **ORM** | [TypeORM](https://typeorm.io/) | `^1.1.0` | Data mapper object-relational mapping |
+| **Authentication** | Passport JWT | `^11.0.2` | Strategy-based authentication |
+| **Password Security**| `bcrypt` | `^6.0.0` | Cryptographic password hashing |
+| **Validation** | `class-validator` | `^0.15.1` | Declarative DTO validation |
 
 ---
 
-## API Reference (Full 21 Endpoints)
+## API Endpoint Reference (21 Endpoints)
 
 | # | Category | Method | Endpoint | Description | Auth Required | Allowed Roles |
 | :- | :--- | :--- | :--- | :--- | :---: | :--- |
@@ -139,7 +128,11 @@ schedula-jagadeesh/
 
 ---
 
-## Elastic Scheduling Workflow (Shrink & Expand)
+## Elastic Doctor Scheduling Architecture (Day 11)
+
+Elastic Doctor Scheduling handles dynamic working hour updates without invalidating existing patient bookings.
+
+### EXPAND & SHRINK Decision Pipeline
 
 ```mermaid
 graph TD
@@ -157,15 +150,43 @@ graph TD
     J -->|No| L[Flag for Patient Reschedule / Cancel as Last Resort & Send Notification]
 ```
 
+### Architectural Breakdown
+1. **EXPAND Flow**: Extends start/end times (e.g., `10:00 AM – 12:00 PM` $\rightarrow$ `09:00 AM – 12:00 PM`). Generates new slots for `09:00 AM – 10:00 AM`, keeping existing bookings in `10:00 AM – 12:00 PM` untouched.
+2. **SHRINK Flow**: Reduces working hours (e.g., ending at `11:00 AM` instead of `12:00 PM`). Checks for active bookings in `11:00 AM – 12:00 PM`. If bookings exist, automatically relocates patients to nearest available slots or flags for resolution.
+
 ---
 
-## Installation & Setup
+## Database Schema & Migration System
+
+The application enforces a **code-first migration policy**:
+* **`synchronize: false`**: Automatic schema synchronization is disabled to prevent data corruption.
+* **`migrationsRun: true`**: Pending migrations are automatically applied on bootstrap.
+
+### Migration Audit Trail
+1. `1784700000001-CreateDoctorProfile.ts`: `doctor_profiles` table
+2. `1784700000002-CreatePatientProfile.ts`: `patient_profiles` table
+3. `1784800000001-CreateDoctorAvailability.ts`: `recurring_availabilities` & `custom_availabilities` tables
+4. `1784900000001-CreateAdvancedScheduling.ts`: `scheduling_configs` & `appointments` tables with `status = 'CONFIRMED'` filtered partial unique indexes.
+
+---
+
+## Concurrency & Transactional Protections
+
+1. **Pessimistic Write Locking (`pessimistic_write`)**: WAVE window token allocations execute inside database transactions with row-level locks on active window appointments.
+2. **Lowest Missing Positive Integer Token Allocation**: Dynamically fills token gaps created by cancellations without token collision.
+3. **Status-Filtered Partial Unique Indexes**:
+   - `idx_wave_window_patient_unique`: Enforces single active booking per patient per wave window (`WHERE status = 'CONFIRMED'`).
+   - `idx_wave_window_token_unique`: Guarantees active token uniqueness (`WHERE status = 'CONFIRMED'`).
+
+---
+
+## Installation & Local Setup
 
 ### Prerequisites
 * **Node.js**: `v20.x` or higher
-* **PostgreSQL**: `v17.x` local or cloud URL
+* **PostgreSQL**: `v17.x` (Local or Cloud URL)
 
-### Environment Setup (`.env`)
+### Environment Configuration (`.env`)
 ```env
 DATABASE_URL=postgresql://postgres:postgres123@localhost:5432/schedula
 JWT_SECRET=super_secret_key_for_jwt
@@ -174,22 +195,26 @@ PORT=3000
 
 ### Running Locally
 ```bash
-# Install dependencies
+# Clone Repository
+git clone https://github.com/Jagadeesh729/schedula-jagadeesh.git
+cd schedula-jagadeesh
+
+# Install Dependencies
 npm install
 
-# Start development server
+# Start Development Server (Watch Mode)
 npm run start:dev
 
-# Build for production
+# Build Production Bundle
 npm run build
 
-# Start production server
+# Run Production Server
 node dist/main
 ```
 
 ---
 
-## Verification & Testing
+## Automated Testing & Verification
 
 Run automated test suites while the server is running (`node dist/main`):
 
@@ -209,7 +234,7 @@ node run-tests.js
 
 ---
 
-## Technical Documentation Links
+## Technical References
 
 * 📊 **Google Sheets API Endpoint Documentation**: [Hospital Backend API Documentation](https://docs.google.com/spreadsheets/d/10eVEnYG-3JAC4MrIJZ0CaLHuIdU8tPBY/edit?usp=sharing)
 * 📐 **System Sequence Flowcharts**: See [`docs/FLOWCHARTS.md`](./docs/FLOWCHARTS.md)
@@ -218,4 +243,4 @@ node run-tests.js
 
 ## Conclusion
 
-The Schedula Backend (`schedula-jagadeesh`) is fully implemented, verified, and merged into `main`. The application compiles cleanly with zero TypeScript errors, passes unit and integration test suites (77 total scenarios), and enforces strict database-level concurrency protections.
+The Schedula Backend (`schedula-jagadeesh`) is fully implemented, verified, and merged into `main`. The application compiles cleanly with zero TypeScript errors, passes all unit and integration test suites (77 total scenarios), and enforces strict database-level concurrency protections.
