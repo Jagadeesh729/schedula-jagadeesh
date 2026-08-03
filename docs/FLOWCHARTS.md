@@ -38,3 +38,20 @@ graph TD
     J --> K[Reopen STREAM Slot & WAVE Capacity without Token Collision]
     K --> L[Return 200 OK Cancelled Success]
 ```
+
+```mermaid
+graph TD
+    A[Doctor Request: Update Availability Start/End Time] --> B{Determine Change Type}
+    B -->|EXPAND: Hours Increased| C[Update Doctor Availability Record]
+    C --> D[Generate New Slots for Added Time Window]
+    D --> E[Preserve All Existing Bookings Unchanged]
+    E --> F[Publish New Slots for Patient Booking]
+
+    B -->|SHRINK: Hours Decreased| G{Check Booked Appointments in Removed Window}
+    G -->|Zero Bookings| H[Update Availability Record Directly]
+    G -->|Bookings Exist| I[Search Nearest Available Slot / Wave Window]
+    I --> J{Suitable Free Slot Found?}
+    J -->|Yes| K[Auto-Reschedule Patient to New Slot & Send Notification]
+    J -->|No| L[Flag for Patient Reschedule / Cancel as Last Resort & Send Notification]
+```
+
