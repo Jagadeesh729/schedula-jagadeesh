@@ -1,8 +1,21 @@
 # Schedula Backend (`schedula-jagadeesh`)
 
+[![Live Production API](https://img.shields.io/badge/Render-Live_Production-230433?style=for-the-badge&logo=render&logoColor=white)](https://schedula-backend-45oj.onrender.com/)
+[![PostgreSQL](https://img.shields.io/badge/Neon_PostgreSQL-v17_TLS-00E599?style=for-the-badge&logo=postgresql&logoColor=white)](https://schedula-backend-45oj.onrender.com/)
+[![NestJS](https://img.shields.io/badge/NestJS-v11-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+
 Schedula is a robust, production-grade healthcare booking, scheduling, and availability management API built with **NestJS**, **TypeScript**, **TypeORM**, and **PostgreSQL**.
 
-This repository implements the complete end-to-end clinical backend infrastructure including authentication, role-based authorization, doctor/patient profile onboarding, Doctor Availability Engine (supporting recurring weekly schedules and custom date overrides), Advanced Doctor Scheduling System (`STREAM` exact slots & `WAVE` token-based capacity), and the complete Appointment Booking & Management API lifecycle with database-level concurrency protection.
+### 🌐 Live Production Service:
+* **Live Base Public URL**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)
+* **Hosted Cloud Database**: Neon PostgreSQL (AWS US East 1, Postgres v17 over TLS)
+* **GitHub Repository**: [`https://github.com/Jagadeesh729/schedula-jagadeesh`](https://github.com/Jagadeesh729/schedula-jagadeesh)
+* **Deployment PR**: [PR #9 (Merged)](https://github.com/Jagadeesh729/schedula-jagadeesh/pull/9)
+
+---
+
+This repository implements the complete end-to-end clinical backend infrastructure including authentication, role-based authorization, doctor/patient profile onboarding, Doctor Availability Engine (supporting recurring weekly schedules and custom date overrides), Advanced Doctor Scheduling System (`STREAM` exact slots & `WAVE` token-based capacity), **Elastic Doctor Scheduling (Shrink & Expand Architecture)**, and the complete Appointment Booking & Management API lifecycle with database-level concurrency protection.
+
 
 ---
 
