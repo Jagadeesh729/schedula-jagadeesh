@@ -179,9 +179,15 @@ async function runAdvancedSchedulingTests() {
   track(assert(cfgErr4.status === 404, 'Reject non-existent doctor with 404 Not Found', `actual status/data: ${cfgErr4.status}`));
 
 
-  // 2. STREAM SLOT GENERATION & AVAILABILITY
-  console.log('\n══════ 2. STREAM SLOT GENERATION & AVAILABILITY TESTS ══════');
-  const testDate = '2026-08-03'; // Monday
+  function getNextMonday() {
+    const d = new Date();
+    d.setDate(d.getDate() + ((1 + 7 - d.getDay()) % 7 || 7));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  const testDate = getNextMonday(); // Dynamic upcoming Monday date
   const availStream = await request(`/doctors/${doc1ProfileId}/availability?date=${testDate}`);
   track(assert(
     availStream.status === 200 && Array.isArray(availStream.data) && availStream.data.length === 3,
