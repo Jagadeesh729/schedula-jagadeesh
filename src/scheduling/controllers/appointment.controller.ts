@@ -13,7 +13,10 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
 import { AppointmentService } from '../services/appointment.service';
-import { CreateAppointmentDto } from '../dto/scheduling.dto';
+import {
+  CreateAppointmentDto,
+  RescheduleAppointmentDto,
+} from '../dto/scheduling.dto';
 
 interface RequestWithUser {
   user: {
@@ -51,6 +54,21 @@ export class AppointmentController {
     @Request() req: RequestWithUser,
   ) {
     return await this.appointmentService.cancelAppointment(id, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  @Patch(':id/reschedule')
+  async rescheduleAppointment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RescheduleAppointmentDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return await this.appointmentService.rescheduleAppointment(
+      id,
+      dto,
+      req.user.id,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

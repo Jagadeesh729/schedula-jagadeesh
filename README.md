@@ -11,6 +11,7 @@ Schedula is a production-grade healthcare booking, scheduling, and availability 
 * **Live Public API Base URL**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)
 * **Hosted Cloud Database**: Neon PostgreSQL (AWS US East 1, Postgres v17 over TLS)
 * **GitHub Repository**: [`https://github.com/Jagadeesh729/schedula-jagadeesh`](https://github.com/Jagadeesh729/schedula-jagadeesh)
+* **Loom Video Demonstration (Day 11)**: [`https://www.loom.com/share/6d14f773b4fb423299f58d59b6204101`](https://www.loom.com/share/6d14f773b4fb423299f58d59b6204101)
 
 ---
 
