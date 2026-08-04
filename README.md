@@ -11,7 +11,6 @@ Schedula is a production-grade healthcare booking, scheduling, and availability 
 * **Live Public API Base URL**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)
 * **Hosted Cloud Database**: Neon PostgreSQL (AWS US East 1, Postgres v17 over TLS)
 * **GitHub Repository**: [`https://github.com/Jagadeesh729/schedula-jagadeesh`](https://github.com/Jagadeesh729/schedula-jagadeesh)
-* **Loom Video Demonstration (Day 11)**: [`https://www.loom.com/share/6d14f773b4fb423299f58d59b6204101`](https://www.loom.com/share/6d14f773b4fb423299f58d59b6204101)
 
 ---
 
@@ -20,7 +19,7 @@ Schedula is a production-grade healthcare booking, scheduling, and availability 
 - [System Architecture](#system-architecture)
 - [Core Functional Modules](#core-functional-modules)
 - [Tech Stack & Dependencies](#tech-stack--dependencies)
-- [API Endpoint Reference (21 Endpoints)](#api-endpoint-reference-21-endpoints)
+- [API Endpoint Reference (22 Endpoints)](#api-endpoint-reference-22-endpoints)
 - [Sample API Request & Response Payloads](#sample-api-request--response-payloads)
 - [Elastic Doctor Scheduling Architecture (Day 11)](#elastic-doctor-scheduling-architecture-day-11)
 - [Database Schema & Migration System](#database-schema--migration-system)
@@ -85,6 +84,12 @@ The backend is engineered following a clean **4-tier NestJS architecture**, enfo
 * **Patient & Doctor Portals**: Dedicated endpoints (`GET /appointment/my`, `GET /doctor/appointments`) returning patient and doctor appointment schedules with full intake metadata.
 * **IDOR-Protected Cancellation (`PATCH /appointment/:id/cancel`)**: Authenticated owner cancellation with resource ownership checks. Automatically restores STREAM slot availability and frees up WAVE window capacity.
 
+### 7. Appointment Rescheduling Engine (Day 12)
+* **Atomic Reschedule Endpoint (`PATCH /appointment/:id/reschedule`)**: Enables patients to reschedule active appointments while enforcing identical validation rules. Supports singular and plural route aliases (`/appointments/:id/reschedule`).
+* **30-Minute Cutoff Enforcement**: Rejects rescheduling or cancellation requests within 30 minutes of appointment start time (`400 Bad Request`).
+* **Slot Release & Token Reassignment**: Atomically releases previous slot/token and reserves new target slot/token inside a TypeORM transaction (`pessimistic_write` row locking).
+* **Suggested Next Available Slot**: Automatically scans upcoming 14 days and populates `suggestedNextAvailable` in `409 Conflict` response payloads when target slot or WAVE capacity is unavailable.
+
 ---
 
 ## Tech Stack & Dependencies
@@ -102,7 +107,7 @@ The backend is engineered following a clean **4-tier NestJS architecture**, enfo
 
 ---
 
-## API Endpoint Reference (21 Endpoints)
+## API Endpoint Reference (22 Endpoints)
 
 | # | Category | Method | Endpoint | Description | Auth Required | Allowed Roles |
 | :- | :--- | :--- | :--- | :--- | :---: | :--- |
@@ -127,6 +132,7 @@ The backend is engineered following a clean **4-tier NestJS architecture**, enfo
 | **19** | Appointments | `PATCH` | `/appointment/:id/cancel` | Cancel an appointment for logged-in patient | Yes | `ROLE=PATIENT` |
 | **20** | Appointments | `GET` | `/doctor/appointments` | List appointments for logged-in doctor | Yes | `ROLE=DOCTOR` |
 | **21** | Appointments | `GET` | `/appointment/:id` | Fetch details of specific appointment by ID | Yes | Authenticated User |
+| **22** | Appointments | `PATCH` | `/appointment/:id/reschedule` | Reschedule an existing appointment (`STREAM` / `WAVE`) | Yes | `ROLE=PATIENT` |
 
 ---
 
@@ -308,13 +314,16 @@ Run automated test suites while the server is running (`node dist/main`):
 # 1. Jest Unit Tests
 npm test -- --runInBand
 
-# 2. Appointment Booking & Management Integration Suite (19 Scenarios)
-node test-appointment-management.js
+# 2. Appointment Rescheduling Engine Test Suite (12 Scenarios)
+node test-rescheduling-suite.js
 
 # 3. STREAM & WAVE Advanced Scheduling Concurrency Suite (26 Scenarios)
 node test-advanced-scheduling.js
 
-# 4. Core Availability & Onboarding Regression Suite (28 Scenarios)
+# 4. Appointment Booking & Management Integration Suite (19 Scenarios)
+node test-appointment-management.js
+
+# 5. Core Availability & Onboarding Regression Suite (28 Scenarios)
 node run-tests.js
 ```
 
