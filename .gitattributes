@@ -1,5 +1,4 @@
-# Override GitHub Linguist language detection for test runner scripts
-test-*.js linguist-vendored=true
-run-tests.js linguist-vendored=true
+# Override GitHub Linguist language detection for root JS test scripts
+*.js linguist-vendored=true
 *.json linguist-documentation=true
 docs/* linguist-documentation=true
