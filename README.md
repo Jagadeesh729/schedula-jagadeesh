@@ -200,7 +200,7 @@ The backend is engineered following a clean **4-tier NestJS architecture**, enfo
 // Request Body (Patient Role)
 {
   "doctorId": "a1b2c3d4-0000-1111-2222-333344445555",
-  "appointmentDate": "2026-08-10",
+  "date": "2026-08-10",
   "startTime": "10:00",
   "endTime": "10:15"
 }
@@ -210,11 +210,43 @@ The backend is engineered following a clean **4-tier NestJS architecture**, enfo
   "id": "f9e8d7c6-5555-4444-3333-222211110000",
   "doctorId": "a1b2c3d4-0000-1111-2222-333344445555",
   "patientId": "b2c3d4e5-1111-2222-3333-444455556666",
-  "appointmentDate": "2026-08-10",
-  "startTime": "10:00",
-  "endTime": "10:15",
+  "date": "2026-08-10",
+  "slotStartTime": "10:00",
+  "slotEndTime": "10:15",
+  "scheduleType": "STREAM",
+  "status": "CONFIRMED"
+}
+```
+
+### 5. Reschedule Appointment (`PATCH /appointment/:id/reschedule`)
+```json
+// Request Body (Patient Role)
+{
+  "date": "2026-08-10",
+  "startTime": "10:20",
+  "endTime": "10:35"
+}
+
+// Response (200 OK)
+{
+  "id": "f9e8d7c6-5555-4444-3333-222211110000",
+  "date": "2026-08-10",
+  "slotStartTime": "10:20",
+  "slotEndTime": "10:35",
+  "scheduleType": "STREAM",
   "status": "CONFIRMED",
-  "tokenNumber": 1
+  "message": "Appointment rescheduled successfully"
+}
+
+// Response (409 Conflict - Slot Unavailable)
+{
+  "statusCode": 409,
+  "message": "Requested slot is already booked",
+  "suggestedNextAvailable": {
+    "date": "2026-08-10",
+    "startTime": "10:40",
+    "endTime": "10:55"
+  }
 }
 ```
 
