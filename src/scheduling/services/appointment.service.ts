@@ -14,7 +14,7 @@ import { PatientProfile } from '../../patient/entities/patient-profile.entity';
 import { RecurringAvailability } from '../../doctor/entities/recurring-availability.entity';
 import { CustomAvailability } from '../../doctor/entities/custom-availability.entity';
 import { Weekday } from '../../doctor/enums/weekday.enum';
-import { CreateAppointmentDto } from '../dto/scheduling.dto';
+import { CreateAppointmentDto, RescheduleAppointmentDto } from '../dto/scheduling.dto';
 import { SchedulingType } from '../enums/scheduling-type.enum';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 
@@ -86,6 +86,33 @@ export class AppointmentService {
       }
     } else {
       this.validateDateNotPast(dateStr);
+    }
+  }
+
+  private validate30MinCutoff(
+    dateStr: string,
+    timeStr?: string,
+    actionName: string = 'reschedule',
+  ): void {
+    if (!timeStr) {
+      this.validateDateNotPast(dateStr);
+      return;
+    }
+
+    const startTimeStr = timeStr.includes('-')
+      ? timeStr.split('-')[0].trim()
+      : timeStr;
+    const target = new Date(`${dateStr}T${startTimeStr.slice(0, 5)}:00Z`);
+    const now = new Date();
+    const nowUtc = new Date(now.toISOString());
+
+    const diffMs = target.getTime() - nowUtc.getTime();
+    const thirtyMinsMs = 30 * 60 * 1000;
+
+    if (diffMs < thirtyMinsMs) {
+      throw new BadRequestException(
+        `Cannot ${actionName} appointments within 30 minutes of appointment start time`,
+      );
     }
   }
 
@@ -540,9 +567,11 @@ export class AppointmentService {
       throw new BadRequestException('Appointment is already cancelled');
     }
 
-    this.validateDateTimeNotPast(
+    this.validate30MinCutoff(
       appointment.date,
-      appointment.slotStartTime ?? undefined,
+      appointment.slotStartTime ||
+        (appointment.window ? appointment.window.split('-')[0] : undefined),
+      'cancel',
     );
 
     appointment.status = AppointmentStatus.CANCELLED;
@@ -602,5 +631,336 @@ export class AppointmentService {
       status: appointment.status,
       createdAt: appointment.createdAt,
     };
+  }
+
+  async findSuggestedNextAvailable(
+    doctorId: string,
+    fromDateStr: string,
+    scheduleType: SchedulingType,
+  ): Promise<Record<string, unknown>> {
+    const startDateObj = new Date(`${fromDateStr}T00:00:00Z`);
+
+    for (let i = 0; i <= 14; i++) {
+      const checkDateObj = new Date(startDateObj);
+      checkDateObj.setUTCDate(checkDateObj.getUTCDate() + i);
+      const checkDateStr = checkDateObj.toISOString().split('T')[0];
+
+      try {
+        const availabilities = await this.getDoctorAvailability(
+          doctorId,
+          checkDateStr,
+        );
+        if (!Array.isArray(availabilities) || availabilities.length === 0) {
+          continue;
+        }
+
+        if (scheduleType === SchedulingType.STREAM) {
+          const freeSlot = (availabilities as GeneratedStreamSlot[]).find(
+            (s) => s.available === true,
+          );
+          if (freeSlot) {
+            return {
+              date: checkDateStr,
+              slot: {
+                startTime: freeSlot.startTime,
+                endTime: freeSlot.endTime,
+              },
+              message: `Next available STREAM slot is on ${checkDateStr} (${freeSlot.startTime}-${freeSlot.endTime})`,
+            };
+          }
+        } else if (scheduleType === SchedulingType.WAVE) {
+          const freeWindow = (
+            availabilities as {
+              window: string;
+              available: boolean;
+              capacity: number;
+            }[]
+          ).find((w) => w.available === true && w.capacity > 0);
+
+          if (freeWindow) {
+            return {
+              date: checkDateStr,
+              window: freeWindow.window,
+              message: `Next available WAVE window is on ${checkDateStr} (${freeWindow.window})`,
+            };
+          }
+        }
+      } catch (_) {
+        // Skip invalid configurations or dates
+      }
+    }
+
+    return {
+      date: fromDateStr,
+      message: 'No available slots or windows found in the next 14 days',
+    };
+  }
+
+  async rescheduleAppointment(
+    appointmentId: string,
+    dto: RescheduleAppointmentDto,
+    patientUserId: string,
+  ): Promise<Record<string, unknown>> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const appointment = await queryRunner.manager.findOne(Appointment, {
+        where: { id: appointmentId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!appointment) {
+        throw new NotFoundException('Appointment not found');
+      }
+
+      if (!appointment.patientId) {
+        throw new ForbiddenException(
+          'You are not authorized to reschedule this appointment',
+        );
+      }
+
+      const patient = await this.resolvePatientProfile(appointment.patientId);
+
+      if (!patient.user || patient.user.id !== patientUserId) {
+        throw new ForbiddenException(
+          'You are not authorized to reschedule this appointment',
+        );
+      }
+
+      if (appointment.status === AppointmentStatus.CANCELLED) {
+        throw new BadRequestException('Cannot reschedule a cancelled appointment');
+      }
+
+      const currentStartTime =
+        appointment.slotStartTime ||
+        (appointment.window ? appointment.window.split('-')[0] : undefined);
+      this.validate30MinCutoff(appointment.date, currentStartTime, 'reschedule');
+
+      const targetDate = dto.date;
+      const targetScheduleType = dto.scheduleType || appointment.scheduleType;
+
+      let targetStartTime = dto.slot?.startTime || dto.startTime;
+      let targetEndTime = dto.slot?.endTime || dto.endTime;
+      let targetWindow = dto.window;
+
+      if (
+        targetScheduleType === SchedulingType.STREAM &&
+        (!targetStartTime || !targetEndTime) &&
+        dto.window
+      ) {
+        const parts = dto.window.split('-');
+        if (parts.length === 2) {
+          targetStartTime = parts[0].trim();
+          targetEndTime = parts[1].trim();
+        }
+      }
+
+      if (
+        targetScheduleType === SchedulingType.WAVE &&
+        !targetWindow &&
+        targetStartTime &&
+        targetEndTime
+      ) {
+        targetWindow = `${targetStartTime}-${targetEndTime}`;
+      }
+
+      this.validate30MinCutoff(
+        targetDate,
+        targetStartTime ||
+          (targetWindow ? targetWindow.split('-')[0] : undefined),
+        'reschedule',
+      );
+
+      const isSameDate = targetDate === appointment.date;
+      let isSameTime = false;
+
+      if (targetScheduleType === SchedulingType.STREAM) {
+        isSameTime =
+          targetStartTime === appointment.slotStartTime &&
+          targetEndTime === appointment.slotEndTime;
+      } else {
+        isSameTime = targetWindow === appointment.window;
+      }
+
+      if (isSameDate && isSameTime) {
+        throw new BadRequestException('Cannot reschedule to the same slot/time');
+      }
+
+      const doctorId = appointment.doctorId;
+
+      if (targetScheduleType === SchedulingType.STREAM) {
+        if (!targetStartTime || !targetEndTime) {
+          throw new BadRequestException(
+            'Slot start time and end time are required for STREAM rescheduling',
+          );
+        }
+
+        const availabilities = await this.getDoctorAvailability(
+          doctorId,
+          targetDate,
+        );
+        const targetSlotObj = (availabilities as GeneratedStreamSlot[]).find(
+          (s) => s.startTime === targetStartTime && s.endTime === targetEndTime,
+        );
+
+        if (!targetSlotObj) {
+          const suggestedNextAvailable = await this.findSuggestedNextAvailable(
+            doctorId,
+            targetDate,
+            SchedulingType.STREAM,
+          );
+          throw new ConflictException({
+            statusCode: 409,
+            error: 'Conflict',
+            message: 'Requested STREAM slot is unavailable or not generated',
+            suggestedNextAvailable,
+          });
+        }
+
+        const existingBookings = await queryRunner.manager.find(Appointment, {
+          where: {
+            doctorId,
+            date: targetDate,
+            slotStartTime: targetStartTime,
+            slotEndTime: targetEndTime,
+            status: AppointmentStatus.CONFIRMED,
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        const isBookedByOther = existingBookings.some(
+          (a) => a.id !== appointment.id,
+        );
+        if (isBookedByOther || targetSlotObj.available === false) {
+          const suggestedNextAvailable = await this.findSuggestedNextAvailable(
+            doctorId,
+            targetDate,
+            SchedulingType.STREAM,
+          );
+          throw new ConflictException({
+            statusCode: 409,
+            error: 'Conflict',
+            message: 'Requested STREAM slot is already booked',
+            suggestedNextAvailable,
+          });
+        }
+
+        appointment.date = targetDate;
+        appointment.scheduleType = SchedulingType.STREAM;
+        appointment.slotStartTime = targetStartTime;
+        appointment.slotEndTime = targetEndTime;
+        appointment.window = null as any;
+        appointment.token = null as any;
+      } else if (targetScheduleType === SchedulingType.WAVE) {
+        if (!targetWindow) {
+          throw new BadRequestException(
+            'Window is required for WAVE rescheduling',
+          );
+        }
+
+        const config = await this.configRepo.findOne({
+          where: { doctorId },
+        });
+        const maxCapacity = config?.maxCapacity ?? 1;
+
+        const activeWaveBookings = await queryRunner.manager.find(Appointment, {
+          where: {
+            doctorId,
+            date: targetDate,
+            window: targetWindow,
+            status: AppointmentStatus.CONFIRMED,
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        const otherBookings = activeWaveBookings.filter(
+          (a) => a.id !== appointment.id,
+        );
+
+        if (otherBookings.length >= maxCapacity) {
+          const suggestedNextAvailable = await this.findSuggestedNextAvailable(
+            doctorId,
+            targetDate,
+            SchedulingType.WAVE,
+          );
+          throw new ConflictException({
+            statusCode: 409,
+            error: 'Conflict',
+            message: 'WAVE capacity is full for this window',
+            suggestedNextAvailable,
+          });
+        }
+
+        const patientAlreadyInWave = otherBookings.some(
+          (a) => a.patientId === appointment.patientId,
+        );
+        if (patientAlreadyInWave) {
+          throw new ConflictException(
+            'Patient already has a booking in this WAVE window',
+          );
+        }
+
+        const assignedTokens = new Set(
+          otherBookings
+            .map((a) => a.token)
+            .filter((t): t is number => t !== undefined && t !== null),
+        );
+        let assignedToken = 1;
+        while (assignedTokens.has(assignedToken)) {
+          assignedToken++;
+        }
+
+        if (assignedToken > maxCapacity) {
+          const suggestedNextAvailable = await this.findSuggestedNextAvailable(
+            doctorId,
+            targetDate,
+            SchedulingType.WAVE,
+          );
+          throw new ConflictException({
+            statusCode: 409,
+            error: 'Conflict',
+            message: 'WAVE capacity is full for this window',
+            suggestedNextAvailable,
+          });
+        }
+
+        appointment.date = targetDate;
+        appointment.scheduleType = SchedulingType.WAVE;
+        appointment.window = targetWindow;
+        appointment.token = assignedToken;
+        appointment.slotStartTime = null as any;
+        appointment.slotEndTime = null as any;
+      }
+
+      const saved = await queryRunner.manager.save(Appointment, appointment);
+      await queryRunner.commitTransaction();
+
+      return {
+        appointmentId: saved.id,
+        id: saved.id,
+        doctorId: saved.doctorId,
+        patientId: saved.patientId,
+        scheduleType: saved.scheduleType,
+        date: saved.date,
+        slot:
+          saved.slotStartTime && saved.slotEndTime
+            ? { startTime: saved.slotStartTime, endTime: saved.slotEndTime }
+            : null,
+        slotStartTime: saved.slotStartTime ?? null,
+        slotEndTime: saved.slotEndTime ?? null,
+        window: saved.window ?? null,
+        token: saved.token ?? null,
+        status: saved.status,
+        message: 'Appointment rescheduled successfully',
+        updatedAt: saved.updatedAt,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
