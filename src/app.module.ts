@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
 import { AppController } from './app.controller';
@@ -8,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { DoctorModule } from './doctor/doctor.module';
 import { PatientModule } from './patient/patient.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
+import { RateLimiterGuard } from './guards/rate-limiter.guard';
 import { CreateUsers1784700000000 } from './migrations/1784700000000-CreateUsers';
 import { CreateDoctorProfile1784700000001 } from './migrations/1784700000001-CreateDoctorProfile';
 import { CreatePatientProfile1784700000002 } from './migrations/1784700000002-CreatePatientProfile';
@@ -39,6 +41,12 @@ dotenv.config();
     SchedulingModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RateLimiterGuard,
+    },
+  ],
 })
 export class AppModule {}
