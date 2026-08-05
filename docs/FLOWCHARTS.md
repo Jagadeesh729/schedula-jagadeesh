@@ -55,3 +55,24 @@ graph TD
     J -->|No| L[Flag for Patient Reschedule / Cancel as Last Resort & Send Notification]
 ```
 
+```mermaid
+graph TD
+    A[Patient Request: Reschedule Appointment PATCH /appointment/:id/reschedule] --> B{Appointment Exists?}
+    B -->|No| C[Return 404 Not Found]
+    B -->|Yes| D{Patient Owns Appointment?}
+    D -->|No| E[Return 403 Forbidden IDOR]
+    D -->|Yes| F{Status = CONFIRMED?}
+    F -->|No| G[Return 400 Bad Request: Cancelled Appointment]
+    F -->|Yes| H{30-Min Cutoff Check: start - now >= 30 mins?}
+    H -->|No| I[Return 400 Bad Request: Cutoff Expired]
+    H -->|Yes| J{Target Slot / Wave Same as Current?}
+    J -->|Yes| K[Return 400 Bad Request: Same Slot]
+    J -->|No| L[Begin Database Transaction & Acquire Pessimistic Lock]
+    L --> M{Is Target Slot / Wave Window Available?}
+    M -->|No| N[Find Suggested Next Available Slot up to 14 Days Ahead]
+    N --> O[Rollback & Return 409 Conflict with suggestedNextAvailable]
+    M -->|Yes| P[Release Old Slot / WAVE Token & Reserve New Target Slot / WAVE Token]
+    P --> Q[Commit Transaction & Return 200 OK Rescheduled]
+```
+
+
