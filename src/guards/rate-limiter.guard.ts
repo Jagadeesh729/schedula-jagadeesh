@@ -15,8 +15,8 @@ interface ClientRequestRecord {
 export class RateLimiterGuard implements CanActivate {
   private readonly clients = new Map<string, ClientRequestRecord>();
   private readonly WINDOW_MS = 60 * 1000; // 1 minute window
-  private readonly GLOBAL_LIMIT = 100; // 100 req/min globally
-  private readonly AUTH_LIMIT = 20; // 20 req/min for auth routes
+  private readonly GLOBAL_LIMIT = process.env.RATE_LIMIT_GLOBAL ? parseInt(process.env.RATE_LIMIT_GLOBAL, 10) : 1000;
+  private readonly AUTH_LIMIT = process.env.RATE_LIMIT_AUTH ? parseInt(process.env.RATE_LIMIT_AUTH, 10) : 500;
 
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();

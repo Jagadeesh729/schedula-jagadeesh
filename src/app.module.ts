@@ -15,6 +15,7 @@ import { CreateDoctorProfile1784700000001 } from './migrations/1784700000001-Cre
 import { CreatePatientProfile1784700000002 } from './migrations/1784700000002-CreatePatientProfile';
 import { CreateDoctorAvailability1784800000001 } from './migrations/1784800000001-CreateDoctorAvailability';
 import { CreateAdvancedScheduling1784900000001 } from './migrations/1784900000001-CreateAdvancedScheduling';
+import { AddElasticSchedulingMetadata1785000000001 } from './migrations/1785000000001-AddElasticSchedulingMetadata';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ dotenv.config();
         CreatePatientProfile1784700000002,
         CreateDoctorAvailability1784800000001,
         CreateAdvancedScheduling1784900000001,
+        AddElasticSchedulingMetadata1785000000001,
       ],
       migrationsRun: true, // Runs migrations automatically on startup
     }),

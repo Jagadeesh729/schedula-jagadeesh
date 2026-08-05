@@ -31,7 +31,7 @@ export class AppointmentController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PATIENT')
-  @Post()
+  @Post(['', 'book'])
   async bookAppointment(
     @Body() dto: CreateAppointmentDto,
     @Request() req: RequestWithUser,
@@ -41,7 +41,7 @@ export class AppointmentController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PATIENT')
-  @Get('my')
+  @Get(['my', 'my-appointments'])
   async getPatientAppointments(@Request() req: RequestWithUser) {
     return await this.appointmentService.getPatientAppointments(req.user.id);
   }

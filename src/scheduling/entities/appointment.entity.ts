@@ -52,6 +52,27 @@ export class Appointment {
   @Column({ type: 'varchar', default: AppointmentStatus.CONFIRMED })
   status!: AppointmentStatus;
 
+  @Column({ name: 'previous_date', type: 'varchar', nullable: true })
+  previousDate?: string;
+
+  @Column({ name: 'previous_slot_start_time', type: 'varchar', nullable: true })
+  previousSlotStartTime?: string;
+
+  @Column({ name: 'previous_slot_end_time', type: 'varchar', nullable: true })
+  previousSlotEndTime?: string;
+
+  @Column({ name: 'previous_window', type: 'varchar', nullable: true })
+  previousWindow?: string;
+
+  @Column({ name: 'previous_token', type: 'int', nullable: true })
+  previousToken?: number;
+
+  @Column({ name: 'is_auto_rescheduled', type: 'boolean', default: false })
+  isAutoRescheduled!: boolean;
+
+  @Column({ name: 'rescheduled_reason', type: 'varchar', nullable: true })
+  rescheduledReason?: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

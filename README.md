@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Deployment Status](https://img.shields.io/badge/Deployment-Render_Live-20C997?logo=render&logoColor=white)](https://schedula-backend-45oj.onrender.com/)
 
-**Schedula** is a production-grade, highly reliable medical appointment scheduling backend engineered with **NestJS**, **TypeScript**, and **PostgreSQL (Neon Cloud DB over TLS)**. It features polymorphic scheduling strategies (**STREAM** 1-on-1 time slots & **WAVE** window-based token allocations), transactional row locking (`pessimistic_write`), database partial unique index safeguards, 30-minute pre-start rescheduling cutoffs, IDOR-protected cancellations, and automatic next-available slot discovery.
+**Schedula** is a production-grade, highly reliable medical appointment scheduling backend engineered with **NestJS**, **TypeScript**, and **PostgreSQL (Neon Cloud DB over TLS)**. It features polymorphic scheduling strategies (**STREAM** 1-on-1 time slots & **WAVE** window-based token allocations), transactional row locking (`pessimistic_write`), database partial unique index safeguards, 30-minute pre-start rescheduling cutoffs, IDOR-protected cancellations, automatic next-available slot discovery, and an **Elastic Availability Engine (Shrink & Expand Auto-Rescheduling)**.
 
 ---
 
@@ -25,9 +25,11 @@ Healthcare scheduling systems face severe concurrency and operational challenges
 1. **Double-Booking Under High Concurrency**: Multi-patient booking spikes on popular doctor availability slots often result in race conditions.
 2. **Rigid Strategy Support**: Traditional systems force doctors into fixed time slots, neglecting high-throughput walk-in wave windows.
 3. **Rescheduling Collisions**: Last-minute appointment shifts lead to corrupted slot availability or orphaned tokens.
+4. **Availability Shrink Disruptions**: When doctors shrink their working hours or delete availability windows, existing booked appointments get cancelled or lost without audit trails.
 
 **Schedula** solves these challenges through:
 - **Polymorphic Scheduling Engine**: Dynamic support for **STREAM** (individual fixed-duration slots + buffer time) and **WAVE** (max-patient token allocation windows).
+- **Elastic Availability Engine (Shrink & Expand)**: Automatically detects appointments affected when a doctor shrinks availability hours or removes working days, auto-rescheduling them to the next available future slot/window with full audit metadata while preserving transaction safety (`QueryRunner`).
 - **Pessimistic Transactional Row Locks**: Acquires TypeORM `pessimistic_write` locks during appointment modification, eliminating race conditions.
 - **Database Partial Unique Indexes**: Enforces slot uniqueness directly in PostgreSQL (`WHERE status = 'CONFIRMED'`), ensuring storage-level integrity even under heavy load.
 - **Automatic Alternative Discovery**: Returns `409 Conflict` with a populated `suggestedNextAvailable` slot object whenever a desired slot or window is full.
@@ -42,6 +44,7 @@ Schedula is built following a clean **4-Tier NestJS Architecture** (Controller $
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        HTTP REQUEST TRANSPORT LAYER                    │
 │   - Global ValidationPipe ({ whitelist: true })                        │
+│   - RateLimiterGuard (Global & Auth Route Request Throttling)          │
 │   - JwtAuthGuard -> RolesGuard (@Roles('DOCTOR' | 'PATIENT' | 'ADMIN')) │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -51,6 +54,7 @@ Schedula is built following a clean **4-Tier NestJS Architecture** (Controller $
 │  - AuthController          (/auth/signup, /auth/login)                 │
 │  - DoctorController        (/doctor/profile)                           │
 │  - PatientController       (/patient/profile)                          │
+│  - DoctorAvailabilityCtrl  (/doctor/availability, /doctor/availability/:id)│
 │  - DoctorsSchedulingCtrl   (/doctors/:doctorId/scheduling)             │
 │  - AppointmentController   (/appointment/book, /appointment/reschedule)│
 └────────────────────────────────────────────────────────────────────────┘
@@ -59,51 +63,49 @@ Schedula is built following a clean **4-Tier NestJS Architecture** (Controller $
 ┌────────────────────────────────────────────────────────────────────────┐
 │                           DOMAIN SERVICES                              │
 │  - AppointmentService      (Rescheduling Engine & Lock Manager)        │
-│  - DoctorAvailabilityServ  (Slot Calculation & Overrides)             │
+│  - DoctorAvailabilityServ  (Elastic Shrink/Expand Engine & Overrides) │
 │  - SchedulingConfigServ    (Strategy Engine)                           │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │                         PERSISTENCE STORAGE                            │
-│  - TypeORM QueryRunner Transaction (pessimistic_write locks)          │
-│  - Neon PostgreSQL v17 (Partial Unique Indexes & Partial FKs)          │
+│  - TypeORM QueryRunner Transaction (pessimistic_write locks & Rollbacks)│
+│  - Neon PostgreSQL v17 (Partial Unique Indexes & Elastic Audit Columns)│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔄 Sequence Diagram: Appointment Rescheduling Engine
+## 🔄 Sequence Diagram: Elastic Availability Shrink Engine
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Patient as Patient Client
-    participant Ctrl as AppointmentController
-    participant Svc as AppointmentService
+    actor Doctor as Doctor Client
+    participant Ctrl as DoctorAvailabilityController
+    participant Svc as DoctorAvailabilityService
     participant DB as PostgreSQL (TypeORM QueryRunner)
 
-    Patient->>Ctrl: PATCH /appointment/:id/reschedule (newDate, newTime)
-    Ctrl->>Svc: rescheduleAppointment(appointmentId, dto, patientId)
-    Svc->>Svc: validate30MinCutoff(targetDate, targetTime)
-    alt Cutoff Violation (<30 mins to start)
-        Svc-->>Patient: 400 Bad Request ("Rescheduling restricted within 30 mins")
+    Doctor->>Ctrl: PATCH /doctor/availability/:id (Shrink Hours / Remove Day)
+    Ctrl->>Svc: updateRecurring(userId, id, dto)
+    Svc->>DB: BEGIN TRANSACTION & acquire pessimistic_write locks
+    Svc->>DB: Apply Recurring Availability Reduction
+    Svc->>Svc: Detect Active Appointments Affected by Availability Shrink
+    alt Affected Appointments Exist
+        loop For Each Affected Appointment
+            Svc->>Svc: Search Next 30 Days for Available STREAM Slot / WAVE Window
+            alt Valid Future Slot Found
+                Svc->>DB: Update Appointment Date/Slot/Token & Store Audit Metadata
+            else No Future Slot Available
+                Svc->>DB: ROLLBACK TRANSACTION
+                Svc-->>Doctor: 400 Bad Request ("Cannot shrink availability: affected appointments could not be auto-rescheduled")
+            end
+        end
     end
-    Svc->>DB: BEGIN TRANSACTION & acquire pessimistic_write lock on appointment
-    DB-->>Svc: Locked Appointment Entity
-    Svc->>Svc: Assert appointment.patientId == caller.patientId (IDOR Check)
-    alt IDOR Violation
-        Svc-->>Patient: 403 Forbidden ("You cannot reschedule this appointment")
-    end
-    Svc->>Svc: Check Target Slot Availability (STREAM/WAVE)
-    alt Slot Unavailable
-        Svc->>Svc: findSuggestedNextAvailable(doctorId, startDate)
-        Svc-->>Patient: 409 Conflict ({ message, suggestedNextAvailable })
-    end
-    Svc->>DB: Release Old Slot & Update Appointment (date, time, slot)
     Svc->>DB: COMMIT TRANSACTION
-    DB-->>Svc: Updated Entity
-    Svc-->>Patient: 200 OK (Rescheduled Appointment Details)
+    DB-->>Svc: Updated Availability & Auto-Rescheduled Audit Summary
+    Svc-->>Doctor: 200 OK ({ autoRescheduledAppointmentsCount, autoRescheduledAppointments })
 ```
 
 ---
@@ -120,46 +122,52 @@ schedula-jagadeesh/
 ├── test-appointment-management.js  # Booking & IDOR Cancellation Test Suite (19 Scenarios)
 ├── test-advanced-scheduling.js     # STREAM/WAVE Concurrency Test Suite (26 Scenarios)
 ├── test-rescheduling-suite.js      # Rescheduling & Cutoff Test Suite (12 Scenarios)
+├── test-elastic-scheduling.js      # Elastic Shrink & Expand Engine Test Suite (18 Scenarios)
 └── src/
     ├── main.ts                     # NestJS Bootstrap, CORS, ValidationPipe
-    ├── app.module.ts              # Root AppModule, TypeORM connection, feature module imports
+    ├── app.module.ts              # Root AppModule, TypeORM connection, RateLimiterGuard
     ├── auth/                      # Authentication module (JWT, Bcrypt, Login/Signup)
     │   ├── auth.controller.ts
     │   ├── auth.service.ts
     │   ├── auth.module.ts
     │   └── jwt.strategy.ts
-    ├── doctor/                    # Doctor profile management
+    ├── doctor/                    # Doctor profile & elastic availability management
     │   ├── doctor.controller.ts
     │   ├── doctor.service.ts
-    │   └── entities/doctor.entity.ts
+    │   ├── doctor-availability.controller.ts
+    │   ├── doctor-availability.service.ts
+    │   └── entities/
+    │       ├── doctor-profile.entity.ts
+    │       ├── recurring-availability.entity.ts
+    │       └── custom-availability.entity.ts
     ├── patient/                   # Patient profile management
     │   ├── patient.controller.ts
     │   ├── patient.service.ts
-    │   └── entities/patient.entity.ts
-    ├── guards/                    # Security guards
+    │   └── entities/patient-profile.entity.ts
+    ├── guards/                    # Security & Rate Limiting guards
     │   ├── jwt-auth.guard.ts
-    │   └── roles.guard.ts
+    │   ├── roles.guard.ts
+    │   └── rate-limiter.guard.ts
     ├── scheduling/                # Core Scheduling Engine
     │   ├── controllers/
     │   │   ├── appointment.controller.ts
     │   │   └── doctors-scheduling.controller.ts
     │   ├── services/
     │   │   ├── appointment.service.ts
-    │   │   ├── doctor-availability.service.ts
     │   │   └── scheduling-config.service.ts
     │   ├── dto/                   # DTOs with class-validator decorators
-    │   │   ├── create-appointment.dto.ts
-    │   │   ├── reschedule-appointment.dto.ts
-    │   │   └── doctor-scheduling-config.dto.ts
+    │   │   ├── scheduling.dto.ts
+    │   │   └── reschedule-appointment.dto.ts
     │   └── entities/
     │       ├── appointment.entity.ts
-    │       ├── doctor-availability.entity.ts
-    │       ├── doctor-date-override.entity.ts
-    │       └── doctor-scheduling-config.entity.ts
+    │       └── scheduling-config.entity.ts
     └── migrations/                # Code-First TypeORM Migrations
-        ├── 1784700000000-InitialSchema.ts
-        ├── 1784800000000-AddAppointments.ts
-        └── 1784900000001-CreateAdvancedScheduling.ts
+        ├── 1784700000000-CreateUsers.ts
+        ├── 1784700000001-CreateDoctorProfile.ts
+        ├── 1784700000002-CreatePatientProfile.ts
+        ├── 1784800000001-CreateDoctorAvailability.ts
+        ├── 1784900000001-CreateAdvancedScheduling.ts
+        └── 1785000000001-AddElasticSchedulingMetadata.ts
 ```
 
 ---
@@ -171,17 +179,17 @@ Schedula utilizes PostgreSQL **Partial Unique Indexes** to enforce slot uniquene
 ```sql
 -- STREAM Strategy: Prevents double-booking the same exact slot for active appointments
 CREATE UNIQUE INDEX idx_stream_slot_unique 
-ON appointments (doctor_id, appointment_date, slot_start_time) 
-WHERE status = 'CONFIRMED' AND appointment_type = 'STREAM';
+ON appointments (doctor_id, date, slot_start_time) 
+WHERE status = 'CONFIRMED' AND slot_start_time IS NOT NULL;
 
 -- WAVE Strategy: Enforces single patient per window and unique token allocation
 CREATE UNIQUE INDEX idx_wave_window_patient_unique 
-ON appointments (doctor_id, appointment_date, slot_start_time, patient_id) 
-WHERE status = 'CONFIRMED' AND appointment_type = 'WAVE';
+ON appointments (doctor_id, date, window, patient_id) 
+WHERE status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL;
 
 CREATE UNIQUE INDEX idx_wave_window_token_unique 
-ON appointments (doctor_id, appointment_date, slot_start_time, token_number) 
-WHERE status = 'CONFIRMED' AND appointment_type = 'WAVE';
+ON appointments (doctor_id, date, window, token) 
+WHERE status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL;
 ```
 
 ---
@@ -202,11 +210,17 @@ WHERE status = 'CONFIRMED' AND appointment_type = 'WAVE';
 
 ## 🔑 Key Features & Subsystems
 
-### 1. STREAM & WAVE Scheduling Strategies
+### 1. Elastic Scheduling (Shrink & Expand Availability) Engine
+- **Expansion**: Expanding availability hours or adding working days preserves all existing appointments while making newly created time slots/windows immediately bookable.
+- **Shrink Auto-Rescheduling**: Shrinking availability hours or deleting recurring slots automatically detects affected active appointments and reschedules them to the next available recurring date/time for that doctor.
+- **Audit Metadata Persistence**: Retains `previousDate`, `previousSlotStartTime`, `previousWindow`, `previousToken`, `isAutoRescheduled: true`, and `rescheduledReason: 'ELASTIC_AVAILABILITY_SHRINK'`.
+- **Atomic Rollback Guarantee**: If any affected appointment cannot find a valid future slot within 30 days, the transaction rolls back (`queryRunner.rollbackTransaction()`), returning `400 Bad Request` to preserve data integrity.
+
+### 2. STREAM & WAVE Scheduling Strategies
 - **STREAM**: Generates discrete time slots (e.g. 15-minute appointment slots with 5-minute buffer intervals) based on doctor operational windows.
 - **WAVE**: Assigns sequential token numbers (Token #1, Token #2, etc.) to patients booking within a fixed time window up to a maximum patient capacity (e.g. max 5 patients per 1-hour window).
 
-### 2. Appointment Rescheduling Engine & Cutoff Guard
+### 3. Appointment Rescheduling Engine & Cutoff Guard
 - **Pre-Start Cutoff Rule**: Rejects rescheduling requests attempted within 30 minutes of appointment start time (`400 Bad Request`).
 - **Atomic Slot Swap**: Releases old slot reservation and acquires new slot inside a single TypeORM transaction with `pessimistic_write` row locks.
 - **Conflict Resolution**: If the target slot is unavailable, scans the upcoming 14 days and returns `409 Conflict` with `suggestedNextAvailable`.
@@ -225,6 +239,8 @@ WHERE status = 'CONFIRMED' AND appointment_type = 'WAVE';
 | `GET` | `/patient/profile` | — | Yes (`PATIENT`) | Get authenticated Patient profile |
 | `POST` | `/doctor/availability` | — | Yes (`DOCTOR`) | Create recurring weekly availability slot |
 | `GET` | `/doctor/availability` | — | Yes (`DOCTOR`) | List recurring availability slots |
+| `PATCH`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Update availability (Elastic Shrink/Expand Engine) |
+| `DELETE`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Delete availability (Elastic Shrink Auto-Reschedule) |
 | `POST` | `/doctor/availability/override` | — | Yes (`DOCTOR`) | Set specific date override (e.g. Day Off) |
 | `GET` | `/doctor/availability/date` | — | Yes | Query available slots for a doctor on date |
 | `POST` | `/doctors/:doctorId/scheduling` | `/doctor/:doctorId/scheduling` | Yes (`ADMIN` / `DOCTOR`) | Setup STREAM or WAVE scheduling strategy |
@@ -267,7 +283,7 @@ JWT_SECRET=your_super_secret_jwt_key_here
 
 ### 3. Database Migration Execution
 ```bash
-# Run TypeORM migrations to set up tables and partial indexes
+# Run TypeORM migrations to set up tables, partial indexes, and elastic metadata
 npm run migration:run
 ```
 
@@ -285,13 +301,13 @@ npm run start:prod
 
 ## 🧪 Automated Test Suite Execution
 
-The repository includes 4 comprehensive integration test runner scripts verifying 85 total test scenarios:
+The repository includes **5 comprehensive integration test runner scripts** verifying **103 total test scenarios**:
 
 ```bash
 # 1. Type Check (Ensure 0 compilation errors)
 npx tsc --noEmit
 
-# 2. Run Auth & Availability Suite (28 Scenarios)
+# 2. Run Core Auth & Availability Suite (28 Scenarios)
 node run-tests.js
 
 # 3. Run Appointment Booking & IDOR Cancellation Suite (19 Scenarios)
@@ -302,6 +318,9 @@ node test-advanced-scheduling.js
 
 # 5. Run Rescheduling & 30-Min Cutoff Suite (12 Scenarios)
 node test-rescheduling-suite.js
+
+# 6. Run Day 13 Elastic Scheduling Engine Suite (18 Scenarios)
+node test-elastic-scheduling.js
 ```
 
 Archived test execution log file preserved at: [`scratch/logs/test-execution.log`](file:///C:/Users/kunda/.gemini/antigravity/brain/01ac7018-4860-437d-84e1-5df4ec62fd37/scratch/logs/test-execution.log).
