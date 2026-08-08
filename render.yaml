@@ -1,0 +1,12 @@
+# Render Infrastructure as Code (IaC) Specification for Schedula Backend
+services:
+  - type: web
+    name: schedula-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000

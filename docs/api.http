@@ -1,0 +1,34 @@
+### Schedula REST Client API Specification File
+@baseUrl = https://schedula-backend-45oj.onrender.com
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. User Signup (Doctor)
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "doctor.demo@hospital.com",
+  "password": "Password123!",
+  "role": "DOCTOR"
+}
+
+### 3. User Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "doctor.demo@hospital.com",
+  "password": "Password123!"
+}
+
+### 4. User Signup (Patient)
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "patient.demo@hospital.com",
+  "password": "Password123!",
+  "role": "PATIENT"
+}
