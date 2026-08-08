@@ -64,6 +64,12 @@ export class CreateAdvancedScheduling1784900000001
     `);
 
     await queryRunner.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "idx_stream_slot_unique"
+      ON "appointments" ("doctor_id", "date", "slot_start_time")
+      WHERE status = 'CONFIRMED' AND "slot_start_time" IS NOT NULL;
+    `);
+
+    await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS "idx_wave_window_patient_unique"
       ON "appointments" ("doctor_id", "date", "window", "patient_id")
       WHERE status = 'CONFIRMED' AND "window" IS NOT NULL AND patient_id IS NOT NULL;
@@ -77,6 +83,9 @@ export class CreateAdvancedScheduling1784900000001
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_stream_slot_unique";`,
+    );
     await queryRunner.query(
       `DROP INDEX IF EXISTS "idx_wave_window_token_unique";`,
     );
