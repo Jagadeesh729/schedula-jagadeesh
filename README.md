@@ -14,7 +14,6 @@
 ## 🌐 Live Application Deployment
 
 - **Live Deployed API Base URL**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)
-- **Interactive Swagger OpenAPI Docs**: [`https://schedula-backend-45oj.onrender.com/api/docs`](https://schedula-backend-45oj.onrender.com/api/docs)
 - **Live Health Reachability Status**: `200 OK`
 - **Hosted Database**: Neon Cloud PostgreSQL v17 (AWS `us-east-1` over TLS)
 
