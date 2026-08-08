@@ -301,7 +301,7 @@ npm run start:prod
 
 ## 🧪 Automated Test Suite Execution
 
-The repository includes **5 comprehensive integration test runner scripts** verifying **103 total test scenarios**:
+The repository includes **7 comprehensive test runner scripts** verifying **104+ total test scenarios**:
 
 ```bash
 # 1. Type Check (Ensure 0 compilation errors)
@@ -321,6 +321,12 @@ node test-rescheduling-suite.js
 
 # 6. Run Day 13 Elastic Scheduling Engine Suite (18 Scenarios)
 node test-elastic-scheduling.js
+
+# 7. Run 50-Way Parallel High-Contention Stress Suite (1 Invariant)
+node test-concurrency-stress.js
+
+# 8. Run Direct PostgreSQL Partial Unique Index Invariant Suite (Code 23505)
+node test-db-partial-index.js
 ```
 
 Archived test execution log file preserved at: [`scratch/logs/test-execution.log`](file:///C:/Users/kunda/.gemini/antigravity/brain/01ac7018-4860-437d-84e1-5df4ec62fd37/scratch/logs/test-execution.log).
