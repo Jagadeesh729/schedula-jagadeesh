@@ -29,7 +29,7 @@ async function runConcurrencyStressTest() {
   const docEmail = `stress_doc_${timestamp}@test.com`;
 
   // 1. REGISTER DOCTOR
-  console.log('[1/4] Registering test Doctor profile...');
+  console.log('[1/5] Registering test Doctor profile...');
   const docSignup = await request('/auth/signup', {
     method: 'POST',
     body: JSON.stringify({
@@ -51,7 +51,7 @@ async function runConcurrencyStressTest() {
   });
   const docToken = docLogin.data.access_token;
 
-  // Create Doctor Profile with all required DTO properties
+  // Create Doctor Profile
   const docProfileRes = await request('/doctor/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
@@ -73,13 +73,26 @@ async function runConcurrencyStressTest() {
 
   const doctorId = docProfileRes.data.id;
 
-  // 2. SET RECURRING AVAILABILITY (10:00 - 11:00 on Monday)
-  console.log('[2/4] Setting STREAM availability (Monday 10:00 - 11:00)...');
+  // 2. SET RECURRING AVAILABILITY (Monday 10:00 - 11:00)
+  console.log('[2/5] Setting recurring availability (Monday 10:00 - 11:00)...');
   await request('/doctor/availability', {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
     body: JSON.stringify({ weekday: 'Monday', startTime: '10:00', endTime: '11:00' }),
   });
+
+  // 3. CONFIGURE STREAM SCHEDULING STRATEGY
+  console.log('[3/5] Configuring STREAM scheduling strategy (slot: 15m, buffer: 5m)...');
+  const stratRes = await request(`/doctors/${doctorId}/scheduling`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${docToken}` },
+    body: JSON.stringify({ schedulingType: 'STREAM', slotDuration: 15, bufferTime: 5 }),
+  });
+
+  if (stratRes.status !== 201 && stratRes.status !== 200) {
+    console.error(`Failed to configure STREAM strategy (${stratRes.status}):`, stratRes.data);
+    process.exit(1);
+  }
 
   // Target next Monday date (YYYY-MM-DD)
   const today = new Date();
@@ -87,13 +100,14 @@ async function runConcurrencyStressTest() {
   const targetDateObj = new Date(today.getTime() + daysUntilMonday * 24 * 60 * 60 * 1000);
   const targetDateStr = targetDateObj.toISOString().split('T')[0];
   const targetSlotStartTime = '10:00';
+  const targetSlotEndTime = '10:15';
 
-  console.log(`  ✓ Doctor Profile ID: ${doctorId}`);
+  console.log(`  ✓ Doctor ID: ${doctorId}`);
   console.log(`  ✓ Target Contest Date: ${targetDateStr}`);
-  console.log(`  ✓ Target Contest Slot: ${targetSlotStartTime}\n`);
+  console.log(`  ✓ Target Slot: ${targetSlotStartTime} - ${targetSlotEndTime}\n`);
 
-  // 3. REGISTER 50 DISTINCT PATIENTS IN PARALLEL
-  console.log('[3/4] Registering 50 distinct Patient accounts...');
+  // 4. REGISTER 50 DISTINCT PATIENTS IN PARALLEL
+  console.log('[4/5] Registering 50 distinct Patient accounts...');
   const CONCURRENT_COUNT = 50;
   const patientTokens = [];
 
@@ -128,18 +142,18 @@ async function runConcurrencyStressTest() {
   }
   console.log(`  ✓ 50 Patient accounts successfully prepared.\n`);
 
-  // 4. FIRE 50 SIMULTANEOUS PARALLEL BOOKING REQUESTS AT THE EXACT SAME SLOT
-  console.log(`[4/4] FIRING 50 SIMULTANEOUS PARALLEL BOOKING REQUESTS AT ${targetSlotStartTime}...`);
+  // 5. FIRE 50 SIMULTANEOUS PARALLEL BOOKING REQUESTS AT THE EXACT SAME SLOT
+  console.log(`[5/5] FIRING 50 SIMULTANEOUS PARALLEL BOOKING REQUESTS AT ${targetSlotStartTime}...`);
 
   const bookingPromises = patientTokens.map((token) =>
-    request('/appointments', {
+    request('/appointment', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         doctorId: doctorId,
         date: targetDateStr,
         startTime: targetSlotStartTime,
-        endTime: '10:30',
+        endTime: targetSlotEndTime,
       }),
     }),
   );
