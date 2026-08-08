@@ -4,7 +4,7 @@
  * Run AFTER server is up: node run-tests.js
  */
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokens — filled in by setup phase

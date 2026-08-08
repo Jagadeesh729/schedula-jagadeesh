@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
