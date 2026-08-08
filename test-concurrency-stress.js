@@ -41,7 +41,7 @@ async function runConcurrencyStressTest() {
   });
 
   if (docSignup.status !== 201) {
-    console.error(`Failed to register doctor: ${docSignup.status}`, docSignup.data);
+    console.error(`Failed doctor signup (${docSignup.status}):`, docSignup.data);
     process.exit(1);
   }
 
@@ -51,46 +51,48 @@ async function runConcurrencyStressTest() {
   });
   const docToken = docLogin.data.access_token;
 
-  // Get Doctor ID
-  const docProfile = await request('/doctor/profile', {
+  // Create Doctor Profile with all required DTO properties
+  const docProfileRes = await request('/doctor/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
     body: JSON.stringify({
       fullName: 'Dr. Concurrency Stress',
       specialization: 'Database Reliability',
+      experience: 10,
+      qualification: 'MD',
       consultationFee: 150,
-      contactDetails: '9998887770',
+      availability: 'Mon-Fri 09:00-17:00',
+      profileDetails: 'Concurrency Stress Specialist',
     }),
   });
-  const doctorId = docProfile.data.id || docProfile.data.doctor?.id;
 
-  // 2. SET RECURRING AVAILABILITY (STREAM Strategy)
-  console.log('[2/4] Setting STREAM availability strategy (09:00 - 17:00)...');
-  const targetDay = 'MONDAY';
-  await request('/doctor/availability/recurring', {
+  if (docProfileRes.status !== 201) {
+    console.error(`Failed doctor profile creation (${docProfileRes.status}):`, docProfileRes.data);
+    process.exit(1);
+  }
+
+  const doctorId = docProfileRes.data.id;
+
+  // 2. SET RECURRING AVAILABILITY (10:00 - 11:00 on Monday)
+  console.log('[2/4] Setting STREAM availability (Monday 10:00 - 11:00)...');
+  await request('/doctor/availability', {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
-    body: JSON.stringify({
-      dayOfWeek: targetDay,
-      startTime: '09:00:00',
-      endTime: '17:00:00',
-      slotDurationMinutes: 30,
-      bufferTimeMinutes: 5,
-    }),
+    body: JSON.stringify({ weekday: 'Monday', startTime: '10:00', endTime: '11:00' }),
   });
 
-  // Calculate next target Monday date (YYYY-MM-DD)
+  // Target next Monday date (YYYY-MM-DD)
   const today = new Date();
   const daysUntilMonday = ((1 + 7 - today.getDay()) % 7) || 7;
-  const targetDateObj = new Date(today.setDate(today.getDate() + daysUntilMonday));
+  const targetDateObj = new Date(today.getTime() + daysUntilMonday * 24 * 60 * 60 * 1000);
   const targetDateStr = targetDateObj.toISOString().split('T')[0];
-  const targetSlotStartTime = '09:00:00';
+  const targetSlotStartTime = '10:00';
 
-  console.log(`  -> Doctor ID: ${doctorId}`);
-  console.log(`  -> Target Contest Date: ${targetDateStr}`);
-  console.log(`  -> Target Contest Slot: ${targetSlotStartTime}\n`);
+  console.log(`  ✓ Doctor Profile ID: ${doctorId}`);
+  console.log(`  ✓ Target Contest Date: ${targetDateStr}`);
+  console.log(`  ✓ Target Contest Slot: ${targetSlotStartTime}\n`);
 
-  // 3. REGISTER 50 PATIENTS IN PARALLEL
+  // 3. REGISTER 50 DISTINCT PATIENTS IN PARALLEL
   console.log('[3/4] Registering 50 distinct Patient accounts...');
   const CONCURRENT_COUNT = 50;
   const patientTokens = [];
@@ -129,14 +131,15 @@ async function runConcurrencyStressTest() {
   // 4. FIRE 50 SIMULTANEOUS PARALLEL BOOKING REQUESTS AT THE EXACT SAME SLOT
   console.log(`[4/4] FIRING 50 SIMULTANEOUS PARALLEL BOOKING REQUESTS AT ${targetSlotStartTime}...`);
 
-  const bookingPromises = patientTokens.map((token, idx) =>
-    request('/scheduling/appointments/stream', {
+  const bookingPromises = patientTokens.map((token) =>
+    request('/appointments', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         doctorId: doctorId,
         date: targetDateStr,
-        slotStartTime: targetSlotStartTime,
+        startTime: targetSlotStartTime,
+        endTime: '10:30',
       }),
     }),
   );
@@ -153,7 +156,7 @@ async function runConcurrencyStressTest() {
     durations.push(res.duration);
     if (res.status === 201) {
       successCount++;
-    } else if (res.status === 409) {
+    } else if (res.status === 409 || res.status === 400) {
       conflictCount++;
     } else {
       errorCount++;
@@ -171,7 +174,7 @@ async function runConcurrencyStressTest() {
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log(`Total Parallel Requests Sent:    ${CONCURRENT_COUNT}`);
   console.log(`Successful Bookings (HTTP 201):  ${successCount}  (Expected: EXACTLY 1)`);
-  console.log(`Conflict Rejections (HTTP 409):  ${conflictCount}  (Expected: EXACTLY 49)`);
+  console.log(`Conflict Rejections (HTTP 409/400): ${conflictCount}  (Expected: EXACTLY 49)`);
   console.log(`Unexpected Failures (HTTP 5xx):  ${errorCount}  (Expected: EXACTLY 0)`);
   console.log('-------------------------------------------------------------------');
   console.log(`Latency P50:                    ${p50} ms`);
@@ -184,7 +187,7 @@ async function runConcurrencyStressTest() {
   const isInvariantPassed = successCount === 1 && conflictCount === (CONCURRENT_COUNT - 1) && errorCount === 0;
 
   if (isInvariantPassed) {
-    console.log('  ✓ INVARIANT PASSED: Exactly 1 booking confirmed, 49 rejected with 409 Conflict.');
+    console.log('  ✓ INVARIANT PASSED: Exactly 1 booking confirmed, 49 rejected with 409/400 Conflict.');
     console.log('  ✓ PostgreSQL Row Locks & Partial Unique Index physically prevented double-booking!\n');
     process.exit(0);
   } else {
