@@ -33,7 +33,7 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
       const resObj = exceptionResponse as Record<string, any>;
       message = resObj.message || message;
-      errorType = resObj.error || exception.constructor.name;
+      errorType = resObj.error || (exception as any)?.constructor?.name || 'HttpException';
     } else if (exception instanceof Error) {
       message = exception.message;
       errorType = exception.name;

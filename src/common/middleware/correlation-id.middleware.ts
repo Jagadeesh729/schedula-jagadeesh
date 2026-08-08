@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'crypto';
+import { randomUUID } from 'crypto';
 
 export interface RequestWithCorrelationId extends Request {
   correlationId?: string;
@@ -11,7 +11,7 @@ export interface RequestWithCorrelationId extends Request {
 export class CorrelationIdMiddleware implements NestMiddleware {
   use(req: RequestWithCorrelationId, res: Response, next: NextFunction) {
     const existingId = req.headers['x-request-id'] || req.headers['x-correlation-id'];
-    const correlationId = (Array.isArray(existingId) ? existingId[0] : existingId) || uuidv4();
+    const correlationId = (Array.isArray(existingId) ? existingId[0] : existingId) || randomUUID();
 
     req.correlationId = correlationId;
     req.startTime = Date.now();
