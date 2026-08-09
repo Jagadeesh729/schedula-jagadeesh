@@ -26,6 +26,11 @@ dotenv.config();
       url: process.env.DATABASE_URL || 'postgresql://postgres:postgres123@localhost:5432/schedula',
       autoLoadEntities: true,
       synchronize: false, // Disables automatic schema sync (required for Task 4)
+      extra: {
+        max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      },
       migrations: [
         CreateUsers1784700000000,
         CreateDoctorProfile1784700000001,
