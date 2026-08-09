@@ -173,6 +173,7 @@ async function runElasticSchedulingSuite() {
 
     // 8. Test Expand Availability (Modify hours to 08:00 - 18:00)
     const expandAvail = await request('PATCH', `/doctor/availability/${availId}`, {
+      weekday: 'Monday',
       startTime: '08:00',
       endTime: '18:00',
     }, docToken);
@@ -185,6 +186,7 @@ async function runElasticSchedulingSuite() {
 
     // 9. Test Shrink Availability (Shrink hours down to 10:00 - 12:00 so 09:00 slot is cut off)
     const shrinkAvail = await request('PATCH', `/doctor/availability/${availId}`, {
+      weekday: 'Monday',
       startTime: '10:00',
       endTime: '12:00',
     }, docToken);
