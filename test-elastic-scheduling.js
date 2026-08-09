@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
@@ -19,13 +20,14 @@ function request(method, path, body = null, token = null) {
 
     const options = {
       hostname: url.hostname,
-      port: url.port,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
       path: url.pathname + url.search,
       method: method,
       headers: headers,
     };
 
-    const req = http.request(options, (res) => {
+    const client = url.protocol === 'https:' ? https : http;
+    const req = client.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
@@ -160,7 +162,7 @@ async function runElasticSchedulingSuite() {
     const targetSlot = firstFreeSlot ? { startTime: firstFreeSlot.startTime, endTime: firstFreeSlot.endTime } : { startTime: '09:00', endTime: '09:15' };
 
     // 7. Book appointment on STREAM slot
-    const bookApp = await request('POST', '/appointment/book', {
+    const bookApp = await request('POST', '/appointment', {
       doctorId,
       scheduleType: 'STREAM',
       date: nextMondayStr,
@@ -214,7 +216,7 @@ async function runElasticSchedulingSuite() {
     const nextTuesdayStr = getNextWeekdayDate('Tuesday');
 
     // Book WAVE token appointment
-    const bookWave = await request('POST', '/appointment/book', {
+    const bookWave = await request('POST', '/appointment', {
       doctorId,
       scheduleType: 'WAVE',
       date: nextTuesdayStr,
