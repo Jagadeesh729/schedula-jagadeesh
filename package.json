@@ -19,6 +19,13 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typecheck": "tsc --noEmit",
+    "test:all": "node run-tests.js && node test-appointment-management.js && node test-advanced-scheduling.js && node test-rescheduling-suite.js && node test-elastic-scheduling.js && node test-edge-cases.js && node test-db-partial-index.js && node test-concurrency-stress.js",
+    "test:core": "node run-tests.js",
+    "test:mgmt": "node test-appointment-management.js",
+    "test:advanced": "node test-advanced-scheduling.js",
+    "test:reschedule": "node test-rescheduling-suite.js",
+    "test:elastic": "node test-elastic-scheduling.js",
+    "test:edge": "node test-edge-cases.js",
     "test:stress": "node test-concurrency-stress.js",
     "test:db-index": "node test-db-partial-index.js"
   },
