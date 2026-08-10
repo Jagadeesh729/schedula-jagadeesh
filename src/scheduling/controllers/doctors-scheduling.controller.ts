@@ -60,3 +60,23 @@ export class DoctorsSchedulingController {
     return await this.appointmentService.getDoctorAvailability(doctorId, date);
   }
 }
+
+@Controller(['scheduling', 'doctor/scheduling'])
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('DOCTOR', 'ADMIN')
+export class SchedulingConfigController {
+  constructor(private readonly configService: SchedulingConfigService) {}
+
+  @Post(['config', ''])
+  async createOrUpdateConfigSelf(
+    @Body() dto: CreateSchedulingConfigDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return await this.configService.createOrUpdateConfig(
+      req.user.id,
+      dto,
+      req.user,
+    );
+  }
+}
+
