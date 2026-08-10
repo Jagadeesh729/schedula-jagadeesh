@@ -23,7 +23,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller(['doctors', 'doctor'])
+@Controller('doctors')
 export class DoctorsSchedulingController {
   constructor(
     private readonly configService: SchedulingConfigService,
