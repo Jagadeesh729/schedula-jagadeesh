@@ -43,6 +43,16 @@ export class DoctorAvailabilityController {
     return this.availabilityService.getByDate(req.user.id, date);
   }
 
+  @Get(':id/shrink-preview')
+  async previewShrink(
+    @Request() req,
+    @Param('id') id: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+  ) {
+    return this.availabilityService.previewShrink(req.user.id, id, startTime, endTime);
+  }
+
   @Patch(':id')
   async updateRecurring(
     @Request() req,

@@ -568,4 +568,56 @@ export class DoctorAvailabilityService {
 
     return { source: 'recurring', slots: recurring };
   }
+
+  async previewShrink(
+    userId: string,
+    id: string,
+    newStartTime?: string,
+    newEndTime?: string,
+  ): Promise<{ affectedCount: number; affectedAppointments: Array<{ id: string; date: string; startTime: string | null; endTime: string | null; window: string | null }> }> {
+    const doctor = await this.resolveDoctorProfile(userId);
+    const target = await this.recurringRepo.findOne({
+      where: { id, doctor: { id: doctor.id } },
+    });
+    if (!target) {
+      throw new NotFoundException('Recurring availability slot not found');
+    }
+
+    const startMin = newStartTime ? this.timeToMinutes(newStartTime) : this.timeToMinutes(target.startTime);
+    const endMin = newEndTime ? this.timeToMinutes(newEndTime) : this.timeToMinutes(target.endTime);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeAppointments = await this.recurringRepo.manager.find(Appointment, {
+      where: { doctorId: doctor.id, status: AppointmentStatus.CONFIRMED },
+    });
+
+    const affected = activeAppointments.filter((app) => {
+      if (app.date < todayStr) return false;
+      const weekday = this.getWeekdayForDateStr(app.date);
+      if (weekday !== target.weekday) return false;
+
+      if (app.scheduleType === SchedulingType.STREAM && app.slotStartTime && app.slotEndTime) {
+        const appStart = this.timeToMinutes(app.slotStartTime);
+        const appEnd = this.timeToMinutes(app.slotEndTime);
+        return appStart < startMin || appEnd > endMin;
+      } else if (app.scheduleType === SchedulingType.WAVE && app.window) {
+        const [wStart, wEnd] = app.window.split('-');
+        const appStart = this.timeToMinutes(wStart);
+        const appEnd = this.timeToMinutes(wEnd);
+        return appStart < startMin || appEnd > endMin;
+      }
+      return false;
+    });
+
+    return {
+      affectedCount: affected.length,
+      affectedAppointments: affected.map((a) => ({
+        id: a.id,
+        date: a.date,
+        startTime: a.slotStartTime ?? null,
+        endTime: a.slotEndTime ?? null,
+        window: a.window ?? null,
+      })),
+    };
+  }
 }
