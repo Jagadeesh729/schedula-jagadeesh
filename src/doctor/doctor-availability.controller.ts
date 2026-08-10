@@ -34,13 +34,15 @@ export class DoctorAvailabilityController {
     return this.availabilityService.getRecurring(req.user.id);
   }
 
-  // NOTE: This static route MUST be declared before the dynamic /:id route.
-  // NestJS resolves routes in declaration order. If /:id appeared first,
-  // the literal string "date" would be captured as the :id parameter,
-  // causing the wrong handler to be invoked.
+  // NOTE: Static routes MUST be declared before dynamic /:id routes.
   @Get('date')
   async getByDate(@Request() req, @Query('date') date: string) {
     return this.availabilityService.getByDate(req.user.id, date);
+  }
+
+  @Post('override')
+  async createOverride(@Request() req, @Body() dto: CreateCustomAvailabilityDto) {
+    return this.availabilityService.createOverride(req.user.id, dto);
   }
 
   @Get(':id/shrink-preview')
@@ -65,10 +67,5 @@ export class DoctorAvailabilityController {
   @Delete(':id')
   async deleteRecurring(@Request() req, @Param('id') id: string) {
     return this.availabilityService.deleteRecurring(req.user.id, id);
-  }
-
-  @Post('override')
-  async createOverride(@Request() req, @Body() dto: CreateCustomAvailabilityDto) {
-    return this.availabilityService.createOverride(req.user.id, dto);
   }
 }
