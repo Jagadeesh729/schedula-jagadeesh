@@ -110,6 +110,26 @@ sequenceDiagram
 
 ---
 
+### 🔍 Sequence Diagram: Shrink Preview Dry-Run Engine (Read-Only)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Doctor as Doctor Client
+    participant Ctrl as DoctorAvailabilityController
+    participant Svc as DoctorAvailabilityService
+    participant DB as PostgreSQL Database
+
+    Doctor->>Ctrl: GET /doctor/availability/:id/shrink-preview?startTime=HH:MM&endTime=HH:MM
+    Ctrl->>Svc: previewShrink(userId, id, startTime, endTime)
+    Svc->>DB: Query Active CONFIRMED Appointments for Doctor
+    Svc->>Svc: Detect Appointments Falling Outside Proposed Working Window
+    Svc-->>Ctrl: Return Affected Count & Impacted Appointments (Read-Only Dry-Run)
+    Ctrl-->>Doctor: 200 OK ({ affectedCount, affectedAppointments })
+```
+
+---
+
 ## 📁 Repository Directory Structure
 
 ```
