@@ -25,7 +25,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller(['appointment', 'appointments'])
+@Controller('appointment')
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}
 
