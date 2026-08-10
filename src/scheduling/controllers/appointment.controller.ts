@@ -25,7 +25,7 @@ interface RequestWithUser {
   };
 }
 
-@Controller('appointment')
+@Controller(['appointment', 'appointments'])
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}
 
@@ -48,7 +48,7 @@ export class AppointmentController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PATIENT')
-  @Patch(':id/cancel')
+  @Patch([':id/cancel', 'cancel/:id'])
   async cancelAppointment(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: RequestWithUser,
@@ -58,7 +58,7 @@ export class AppointmentController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PATIENT')
-  @Patch(':id/reschedule')
+  @Patch([':id/reschedule', 'reschedule/:id'])
   async rescheduleAppointment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RescheduleAppointmentDto,
