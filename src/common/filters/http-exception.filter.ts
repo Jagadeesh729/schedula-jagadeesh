@@ -53,10 +53,19 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       );
     }
 
+    // Collect any extra fields from the exception response (e.g. suggestedNextAvailable)
+    let extraFields: Record<string, unknown> = {};
+    if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      const resObj = exceptionResponse as Record<string, any>;
+      const { message: _m, error: _e, statusCode: _s, ...rest } = resObj;
+      extraFields = rest;
+    }
+
     response.status(status).json({
       statusCode: status,
       error: errorType,
       message,
+      ...extraFields,
       requestId,
       timestamp: new Date().toISOString(),
       path: request.url,

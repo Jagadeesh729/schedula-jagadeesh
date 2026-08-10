@@ -62,7 +62,35 @@ export class AppointmentService {
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
   }
 
+  private validateCalendarDate(dateStr: string): void {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      throw new BadRequestException('date must be YYYY-MM-DD');
+    }
+
+    const [yearStr, monthStr, dayStr] = dateStr.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+      throw new BadRequestException(`${dateStr} is not a valid calendar date`);
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      throw new BadRequestException(`${dateStr} is not a valid calendar date`);
+    }
+
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    const normalized = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}-${String(parsed.getUTCDate()).padStart(2, '0')}`;
+
+    if (normalized !== dateStr) {
+      throw new BadRequestException(`${dateStr} is not a valid calendar date`);
+    }
+  }
+
   private validateDateNotPast(dateStr: string): void {
+    this.validateCalendarDate(dateStr);
+
     const targetDate = new Date(`${dateStr}T23:59:59Z`);
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -75,6 +103,8 @@ export class AppointmentService {
   }
 
   private validateDateTimeNotPast(dateStr: string, timeStr?: string): void {
+    this.validateCalendarDate(dateStr);
+
     const now = new Date();
     if (timeStr) {
       const target = new Date(`${dateStr}T${timeStr.slice(0, 5)}:00Z`);
@@ -323,6 +353,8 @@ export class AppointmentService {
     dto: CreateAppointmentDto,
     patientUserId: string,
   ): Promise<Appointment> {
+    this.validateCalendarDate(dto.date);
+
     const doctor = await this.resolveDoctorProfile(dto.doctorId);
     const patient = await this.resolvePatientProfile(patientUserId);
 
@@ -754,6 +786,8 @@ export class AppointmentService {
         appointment.slotStartTime ||
         (appointment.window ? appointment.window.split('-')[0] : undefined);
       this.validate30MinCutoff(appointment.date, currentStartTime, 'reschedule');
+
+      this.validateCalendarDate(dto.date);
 
       const targetDate = dto.date;
       const targetScheduleType = dto.scheduleType || appointment.scheduleType;

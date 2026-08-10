@@ -109,4 +109,8 @@ describe('AppointmentService Unit Tests', () => {
     );
     expect(slots[0].available).toBe(true);
   });
+
+  it('should reject impossible calendar dates at the service boundary', () => {
+    expect(() => (service as any).validateCalendarDate('2026-13-45')).toThrow();
+  });
 });

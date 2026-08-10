@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -56,7 +57,7 @@ export class CreateAppointmentDto {
 
   @IsNotEmpty()
   @IsString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
+  @IsDateString({}, { message: 'date must be a valid calendar date in YYYY-MM-DD format' })
   date!: string;
 
   @IsOptional()
@@ -95,7 +96,7 @@ export class CreateAppointmentDto {
 export class RescheduleAppointmentDto {
   @IsNotEmpty()
   @IsString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
+  @IsDateString({}, { message: 'date must be a valid calendar date in YYYY-MM-DD format' })
   date!: string;
 
   @IsOptional()
