@@ -15,7 +15,7 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get('/health')
+  @Get('health')
   async getHealth() {
     let dbStatus = 'disconnected';
     let dbLatencyMs = -1;
@@ -58,12 +58,12 @@ export class AppController {
     };
   }
 
-  @Get('/readiness')
+  @Get('readiness')
   async getReadiness() {
     return this.getHealth();
   }
 
-  @Get('/liveness')
+  @Get('liveness')
   getLiveness() {
     return {
       status: 'alive',
