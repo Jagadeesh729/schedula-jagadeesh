@@ -85,6 +85,11 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsString()
   window?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationMinutes?: number;
 }
 
 export class RescheduleAppointmentDto {

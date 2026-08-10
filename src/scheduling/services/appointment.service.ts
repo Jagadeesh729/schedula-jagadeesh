@@ -341,9 +341,26 @@ export class AppointmentService {
     }
 
     if (effectiveStrategy === SchedulingType.STREAM) {
-      if (!dto.slot || !dto.slot.startTime || !dto.slot.endTime) {
+      if (!dto.slot || !dto.slot.startTime) {
         throw new BadRequestException(
-          'slot object with startTime and endTime is required for STREAM scheduling',
+          'slot object with startTime is required for STREAM scheduling',
+        );
+      }
+
+      const baseSlotDuration = config.slotDuration || 15;
+      if (dto.durationMinutes) {
+        if (dto.durationMinutes <= 0 || dto.durationMinutes % baseSlotDuration !== 0) {
+          throw new BadRequestException(
+            `durationMinutes must be a positive multiple of base slot duration (${baseSlotDuration})`,
+          );
+        }
+        const calculatedEndMin = this.timeToMinutes(dto.slot.startTime) + dto.durationMinutes;
+        dto.slot.endTime = this.minutesToTime(calculatedEndMin);
+      }
+
+      if (!dto.slot.endTime) {
+        throw new BadRequestException(
+          'slot object with endTime is required for STREAM scheduling',
         );
       }
 
