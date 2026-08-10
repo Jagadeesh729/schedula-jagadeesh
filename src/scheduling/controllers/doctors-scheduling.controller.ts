@@ -124,3 +124,14 @@ export class DoctorSchedulingConfigController {
 }
 
 
+@Controller('doctor')
+export class DoctorAppointmentsController {
+  constructor(private readonly appointmentService: AppointmentService) {}
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DOCTOR')
+  @Get('appointments')
+  async getDoctorAppointments(@Request() req: RequestWithUser) {
+    return await this.appointmentService.getDoctorAppointments(req.user.id);
+  }
+}

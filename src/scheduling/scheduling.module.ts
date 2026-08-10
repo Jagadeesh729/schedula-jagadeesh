@@ -10,6 +10,7 @@ import {
   DoctorsSchedulingController,
   SchedulingConfigController,
   DoctorSchedulingConfigController,
+  DoctorAppointmentsController,
 } from './controllers/doctors-scheduling.controller';
 import { AppointmentController } from './controllers/appointment.controller';
 import { SchedulingConfigService } from './services/scheduling-config.service';
@@ -30,6 +31,7 @@ import { AppointmentService } from './services/appointment.service';
     DoctorsSchedulingController,
     SchedulingConfigController,
     DoctorSchedulingConfigController,
+    DoctorAppointmentsController,
     AppointmentController,
   ],
   providers: [SchedulingConfigService, AppointmentService],
