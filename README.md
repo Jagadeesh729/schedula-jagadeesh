@@ -240,6 +240,7 @@ WHERE status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL;
 | `POST` | `/doctor/availability` | — | Yes (`DOCTOR`) | Create recurring weekly availability slot |
 | `GET` | `/doctor/availability` | — | Yes (`DOCTOR`) | List recurring availability slots |
 | `PATCH`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Update availability (Elastic Shrink/Expand Engine) |
+| `GET`  | `/doctor/availability/:id/shrink-preview` | — | Yes (`DOCTOR`) | Dry-run preview of affected appointments for shrink |
 | `DELETE`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Delete availability (Elastic Shrink Auto-Reschedule) |
 | `POST` | `/doctor/availability/override` | — | Yes (`DOCTOR`) | Set specific date override (e.g. Day Off) |
 | `GET` | `/doctor/availability/date` | — | Yes | Query available slots for a doctor on date |
@@ -301,32 +302,35 @@ npm run start:prod
 
 ## 🧪 Automated Test Suite Execution
 
-The repository includes **7 comprehensive test runner scripts** verifying **104+ total test scenarios**:
+The repository includes **8 comprehensive test runner scripts** verifying **113 explicitly enumerated test cases** plus a **50-request high-contention stress test**:
 
 ```bash
 # 1. Type Check (Ensure 0 compilation errors)
 npx tsc --noEmit
 
-# 2. Run Core Auth & Availability Suite (28 Scenarios)
+# 2. Run Core Auth & Availability Suite (28 Test Cases)
 node run-tests.js
 
-# 3. Run Appointment Booking & IDOR Cancellation Suite (19 Scenarios)
+# 3. Run Appointment Booking & IDOR Cancellation Suite (19 Test Cases)
 node test-appointment-management.js
 
-# 4. Run Advanced STREAM & WAVE Concurrency Suite (26 Scenarios)
+# 4. Run Advanced STREAM & WAVE Concurrency Suite (26 Test Cases)
 node test-advanced-scheduling.js
 
-# 5. Run Rescheduling & 30-Min Cutoff Suite (12 Scenarios)
+# 5. Run Rescheduling & 30-Min Cutoff Suite (12 Test Cases)
 node test-rescheduling-suite.js
 
-# 6. Run Day 13 Elastic Scheduling Engine Suite (18 Scenarios)
+# 6. Run Elastic Scheduling Engine Suite (18 Test Cases)
 node test-elastic-scheduling.js
 
-# 7. Run 50-Way Parallel High-Contention Stress Suite (1 Invariant)
-node test-concurrency-stress.js
+# 7. Run Boundary Condition & Idempotent Edge-Case Suite (7 Test Cases)
+node test-edge-cases.js
 
-# 8. Run Direct PostgreSQL Partial Unique Index Invariant Suite (Code 23505)
+# 8. Run Direct PostgreSQL Partial Unique Index Invariant Suite (3 Test Cases - Code 23505)
 node test-db-partial-index.js
+
+# 9. Run 50-Way Parallel High-Contention Stress Suite (50 Parallel Requests - 1/49/0 Result)
+node test-concurrency-stress.js
 ```
 
 Archived test execution log file preserved at: [`scratch/logs/test-execution.log`](file:///C:/Users/kunda/.gemini/antigravity/brain/01ac7018-4860-437d-84e1-5df4ec62fd37/scratch/logs/test-execution.log).
