@@ -6,7 +6,11 @@ import { DoctorProfile } from '../doctor/entities/doctor-profile.entity';
 import { PatientProfile } from '../patient/entities/patient-profile.entity';
 import { RecurringAvailability } from '../doctor/entities/recurring-availability.entity';
 import { CustomAvailability } from '../doctor/entities/custom-availability.entity';
-import { DoctorsSchedulingController, SchedulingConfigController } from './controllers/doctors-scheduling.controller';
+import {
+  DoctorsSchedulingController,
+  SchedulingConfigController,
+  DoctorSchedulingConfigController,
+} from './controllers/doctors-scheduling.controller';
 import { AppointmentController } from './controllers/appointment.controller';
 import { SchedulingConfigService } from './services/scheduling-config.service';
 import { AppointmentService } from './services/appointment.service';
@@ -25,6 +29,7 @@ import { AppointmentService } from './services/appointment.service';
   controllers: [
     DoctorsSchedulingController,
     SchedulingConfigController,
+    DoctorSchedulingConfigController,
     AppointmentController,
   ],
   providers: [SchedulingConfigService, AppointmentService],

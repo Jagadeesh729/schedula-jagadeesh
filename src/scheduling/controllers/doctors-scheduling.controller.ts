@@ -61,13 +61,13 @@ export class DoctorsSchedulingController {
   }
 }
 
-@Controller(['scheduling', 'doctor/scheduling'])
+@Controller('scheduling')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('DOCTOR', 'ADMIN')
 export class SchedulingConfigController {
   constructor(private readonly configService: SchedulingConfigService) {}
 
-  @Post(['config', ''])
+  @Post('config')
   async createOrUpdateConfigSelf(
     @Body() dto: CreateSchedulingConfigDto,
     @Request() req: RequestWithUser,
@@ -78,5 +78,49 @@ export class SchedulingConfigController {
       req.user,
     );
   }
+
+  @Post()
+  async createOrUpdateConfigSelfRoot(
+    @Body() dto: CreateSchedulingConfigDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return await this.configService.createOrUpdateConfig(
+      req.user.id,
+      dto,
+      req.user,
+    );
+  }
 }
+
+@Controller('doctor/scheduling')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('DOCTOR', 'ADMIN')
+export class DoctorSchedulingConfigController {
+  constructor(private readonly configService: SchedulingConfigService) {}
+
+  @Post('config')
+  async createOrUpdateConfigSelf(
+    @Body() dto: CreateSchedulingConfigDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return await this.configService.createOrUpdateConfig(
+      req.user.id,
+      dto,
+      req.user,
+    );
+  }
+
+  @Post()
+  async createOrUpdateConfigSelfRoot(
+    @Body() dto: CreateSchedulingConfigDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return await this.configService.createOrUpdateConfig(
+      req.user.id,
+      dto,
+      req.user,
+    );
+  }
+}
+
 
