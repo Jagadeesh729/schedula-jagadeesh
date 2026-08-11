@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+@Catch()
 @InjectableFilter()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalHttpExceptionFilter.name);

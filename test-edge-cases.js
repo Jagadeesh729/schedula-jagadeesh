@@ -3,7 +3,7 @@
  * Targets hiring-project evaluation scope gaps.
  */
 
-const BASE_URL = process.env.BASE_URL || 'https://schedula-backend-45oj.onrender.com';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 async function request(path, options = {}) {
   const url = `${BASE_URL}${path}`;

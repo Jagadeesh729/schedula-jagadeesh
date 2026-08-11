@@ -422,7 +422,7 @@ async function runAdvancedSchedulingTests() {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         doctorId: concDocProfileId,
-        date: '2026-08-10',
+        date: testDate,
         scheduleType: 'WAVE',
         window: '10:00-11:00',
       }),
@@ -450,7 +450,7 @@ async function runAdvancedSchedulingTests() {
       headers: { Authorization: `Bearer ${concPatientTokens[0]}` },
       body: JSON.stringify({
         doctorId: concDocProfileId,
-        date: '2026-08-10',
+        date: testDate,
         scheduleType: 'WAVE',
         window: '10:00-11:00',
       }),
@@ -460,7 +460,7 @@ async function runAdvancedSchedulingTests() {
       headers: { Authorization: `Bearer ${concPatientTokens[0]}` },
       body: JSON.stringify({
         doctorId: concDocProfileId,
-        date: '2026-08-10',
+        date: testDate,
         scheduleType: 'WAVE',
         window: '10:00-11:00',
       }),
