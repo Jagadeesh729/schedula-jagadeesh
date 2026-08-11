@@ -196,7 +196,7 @@ async function runNotificationWorkflowSuite() {
   assert(readRes.body.isRead === true, 'Notification isRead is now true');
 
   // 6. Test Authorization & Edge Cases
-  console.log('\n[6/6] Testing Authorization & Edge Cases...');
+  console.log('\n[6/7] Testing Authorization & Edge Cases...');
   // Patient 2 attempting to mark Patient 1's notification as read -> 403 Forbidden
   const forbiddenRead = await request('PATCH', `/notifications/${notifToMark}/read`, null, pat2Token);
   assert(forbiddenRead.status === 403, 'Unauthorized patient marking notification returns 403 Forbidden');
@@ -208,6 +208,24 @@ async function runNotificationWorkflowSuite() {
   // Non-existent UUID -> 404 Not Found
   const notFoundRes = await request('PATCH', '/notifications/00000000-0000-0000-0000-000000000000/read', null, patToken);
   assert(notFoundRes.status === 404, 'Non-existent notification returns 404 Not Found');
+
+  // 7. Test Elastic Availability Shrink Auto-Reschedule Notification Workflow
+  console.log('\n[7/7] Testing Elastic Availability Shrink Auto-Reschedule notification workflow...');
+  const availList = await request('GET', '/doctor/availability', null, docToken);
+  if (Array.isArray(availList.body) && availList.body.length > 0) {
+    const availId = availList.body[0].id;
+    // Shrink doctor availability from 09:00-17:00 down to 10:00-12:00
+    const shrinkRes = await request('PATCH', `/doctor/availability/${availId}`, {
+      startTime: '10:00',
+      endTime: '12:00',
+    }, docToken);
+    assert(shrinkRes.status === 200, 'PATCH /doctor/availability/:id shrink returns 200 OK');
+
+    const notifsAfterShrink = await request('GET', '/notifications', null, patToken);
+    assert(notifsAfterShrink.status === 200, 'GET /notifications after shrink returns 200 OK');
+    const shrinkNotif = notifsAfterShrink.body[0];
+    assert(shrinkNotif.type === 'APPOINTMENT_RESCHEDULED', 'Elastic shrink auto-rescheduled appointment created APPOINTMENT_RESCHEDULED notification');
+  }
 
   console.log('\n═══════════════════════════════════════════════════════════');
   console.log('🎉 EVENT-BASED NOTIFICATION SYSTEM TEST SUITE PASSED (100%)!');

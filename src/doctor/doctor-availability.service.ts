@@ -348,6 +348,22 @@ export class DoctorAvailabilityService {
         }
 
         const savedApp = await queryRunner.manager.save(Appointment, app);
+        if (savedApp.patientId) {
+          const timeStr = savedApp.slotStartTime || savedApp.window || '';
+          try {
+            await this.notificationService.createNotification(
+              {
+                patientId: savedApp.patientId,
+                type: NotificationType.APPOINTMENT_RESCHEDULED,
+                title: 'Appointment Rescheduled',
+                message: `Your appointment has been rescheduled to ${savedApp.date} at ${timeStr}.`,
+                appointmentId: savedApp.id,
+                eventId: `RESCHEDULED_${savedApp.id}_${savedApp.date}_${timeStr}`,
+              },
+              queryRunner.manager,
+            );
+          } catch (_) {}
+        }
         affectedDetails.push({
           appointmentId: savedApp.id,
           patientId: savedApp.patientId,
