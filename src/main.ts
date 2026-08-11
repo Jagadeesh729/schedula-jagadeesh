@@ -6,7 +6,9 @@ import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filte
 async function bootstrap() {
   if (
     process.env.NODE_ENV === 'production' &&
-    (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'supersecretkey')
+    (!process.env.JWT_SECRET ||
+      process.env.JWT_SECRET === 'supersecretkey' ||
+      process.env.JWT_SECRET === 'super_secret_key_for_jwt')
   ) {
     console.error('FATAL: Production JWT_SECRET environment variable is unset or insecure.');
     process.exit(1);
