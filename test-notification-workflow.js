@@ -70,6 +70,8 @@ async function runNotificationWorkflowSuite() {
 
   // 1. Setup Doctor & Patient
   console.log('[1/6] Registering Doctor and Patient accounts...');
+
+  // --- Doctor: signup then login to get access_token ---
   const docSignup = await request('POST', '/auth/signup', {
     email: doctorEmail,
     password,
@@ -77,11 +79,24 @@ async function runNotificationWorkflowSuite() {
     role: 'DOCTOR',
   });
   assert(docSignup.status === 201, 'Doctor signup returns 201');
-  const docToken = docSignup.body.token;
 
+  const docLogin = await request('POST', '/auth/login', {
+    email: doctorEmail,
+    password,
+  });
+  assert(docLogin.status === 200, 'Doctor login returns 200');
+  const docToken = docLogin.body.access_token;
+  assert(!!docToken, 'Doctor login returns access_token');
+
+  // Create doctor profile with all required fields
   await request('POST', '/doctor/profile', {
     fullName: 'Dr. Sarah Connor',
     specialization: 'Cardiology',
+    experience: 10,
+    qualification: 'MBBS, MD (Cardiology)',
+    consultationFee: 500,
+    availability: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    profileDetails: 'Experienced cardiologist with 10 years of practice.',
   }, docToken);
 
   await request('POST', '/doctor/availability', {
@@ -99,6 +114,7 @@ async function runNotificationWorkflowSuite() {
     bufferTime: 5,
   }, docToken);
 
+  // --- Patient 1: signup then login to get access_token ---
   const patSignup = await request('POST', '/auth/signup', {
     email: patientEmail,
     password,
@@ -106,13 +122,24 @@ async function runNotificationWorkflowSuite() {
     role: 'PATIENT',
   });
   assert(patSignup.status === 201, 'Patient 1 signup returns 201');
-  const patToken = patSignup.body.token;
 
+  const patLogin = await request('POST', '/auth/login', {
+    email: patientEmail,
+    password,
+  });
+  assert(patLogin.status === 200, 'Patient 1 login returns 200');
+  const patToken = patLogin.body.access_token;
+  assert(!!patToken, 'Patient 1 login returns access_token');
+
+  // Create patient 1 profile with all required fields
   await request('POST', '/patient/profile', {
     fullName: 'John Doe',
+    age: 30,
+    gender: 'MALE',
     contactDetails: '1234567890',
   }, patToken);
 
+  // --- Patient 2: signup then login to get access_token ---
   const pat2Signup = await request('POST', '/auth/signup', {
     email: patient2Email,
     password,
@@ -120,10 +147,20 @@ async function runNotificationWorkflowSuite() {
     role: 'PATIENT',
   });
   assert(pat2Signup.status === 201, 'Patient 2 signup returns 201');
-  const pat2Token = pat2Signup.body.token;
 
+  const pat2Login = await request('POST', '/auth/login', {
+    email: patient2Email,
+    password,
+  });
+  assert(pat2Login.status === 200, 'Patient 2 login returns 200');
+  const pat2Token = pat2Login.body.access_token;
+  assert(!!pat2Token, 'Patient 2 login returns access_token');
+
+  // Create patient 2 profile with all required fields
   await request('POST', '/patient/profile', {
     fullName: 'Jane Smith',
+    age: 28,
+    gender: 'FEMALE',
     contactDetails: '0987654321',
   }, pat2Token);
 
