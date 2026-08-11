@@ -60,13 +60,36 @@ export class AppController {
 
   @Get('/readiness')
   async getReadiness() {
-    return this.getHealth();
+    if (!this.dataSource || !this.dataSource.isInitialized) {
+      throw new ServiceUnavailableException({
+        status: 'not_ready',
+        reason: 'Database pool uninitialized',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    try {
+      await this.dataSource.query('SELECT 1');
+      return {
+        status: 'ready',
+        database: 'connected',
+        timestamp: new Date().toISOString(),
+      };
+    } catch {
+      throw new ServiceUnavailableException({
+        status: 'not_ready',
+        reason: 'Database query failed',
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   @Get('/liveness')
   getLiveness() {
+    const memory = process.memoryUsage();
     return {
       status: 'alive',
+      uptimeSeconds: Math.floor(process.uptime()),
+      memoryRssMb: (memory.rss / 1024 / 1024).toFixed(2),
       timestamp: new Date().toISOString(),
     };
   }
