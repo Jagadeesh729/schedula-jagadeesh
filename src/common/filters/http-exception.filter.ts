@@ -9,7 +9,6 @@ import {
 import { Request, Response } from 'express';
 
 @Catch()
-@InjectableFilter()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalHttpExceptionFilter.name);
 
@@ -72,8 +71,4 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       path: request.url,
     });
   }
-}
-
-function InjectableFilter(): ClassDecorator {
-  return (target: any) => target;
 }

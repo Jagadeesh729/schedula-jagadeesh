@@ -10,27 +10,68 @@ import { Request } from 'express';
 
 interface ClientRequestRecord {
   timestamps: number[];
+  lastSeen: number;
 }
 
+/**
+ * Rate limiter guard with:
+ * - Sliding-window in-memory fallback (single-instance safe)
+ * - Optional Redis-backed distributed mode (via REDIS_URL env var + ioredis)
+ * - Periodic eviction of stale in-memory records (prevents unbounded Map growth)
+ * - Configurable limits via RATE_LIMIT_GLOBAL and RATE_LIMIT_AUTH env vars
+ */
 @Injectable()
 export class RateLimiterGuard implements CanActivate {
   private readonly logger = new Logger(RateLimiterGuard.name);
   private readonly clients = new Map<string, ClientRequestRecord>();
-  private readonly WINDOW_MS = 60 * 1000; // 1 minute window
-  private readonly GLOBAL_LIMIT = process.env.RATE_LIMIT_GLOBAL ? parseInt(process.env.RATE_LIMIT_GLOBAL, 10) : 1000;
-  private readonly AUTH_LIMIT = process.env.RATE_LIMIT_AUTH ? parseInt(process.env.RATE_LIMIT_AUTH, 10) : 500;
+  private readonly WINDOW_MS = 60 * 1000; // 1-minute sliding window
+  private readonly GLOBAL_LIMIT = process.env.RATE_LIMIT_GLOBAL
+    ? parseInt(process.env.RATE_LIMIT_GLOBAL, 10)
+    : 1000;
+  private readonly AUTH_LIMIT = process.env.RATE_LIMIT_AUTH
+    ? parseInt(process.env.RATE_LIMIT_AUTH, 10)
+    : 500;
+
+  /** Maximum number of unique IPs tracked in memory before eviction */
+  private readonly MAX_CLIENTS = 10_000;
+
   private redisClient: any = null;
   private isRedisConnected = false;
 
+  /** Periodic eviction interval reference for cleanup */
+  private evictionInterval: ReturnType<typeof setInterval> | null = null;
+
   constructor() {
     this.initRedisIfConfigured();
+    this.startEvictionTimer();
+  }
+
+  /**
+   * Periodically evict stale in-memory entries to prevent unbounded Map growth.
+   * Runs every 5 minutes; removes entries not seen in the last 2x window duration.
+   */
+  private startEvictionTimer(): void {
+    this.evictionInterval = setInterval(() => {
+      const staleThreshold = Date.now() - this.WINDOW_MS * 2;
+      for (const [ip, record] of this.clients) {
+        if (record.lastSeen < staleThreshold) {
+          this.clients.delete(ip);
+        }
+      }
+    }, 5 * 60 * 1000); // every 5 minutes
+
+    // Unref so the timer doesn't prevent process exit in tests
+    if (this.evictionInterval.unref) {
+      this.evictionInterval.unref();
+    }
   }
 
   private async initRedisIfConfigured() {
     const redisUrl = process.env.REDIS_URL || process.env.REDIS_HOST;
     if (redisUrl) {
       try {
-        // Dynamic import of ioredis if installed
+        // Dynamic require of ioredis if installed; falls back gracefully if not present
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const Redis = require('ioredis');
         this.redisClient = new Redis(redisUrl, {
           enableOfflineQueue: false,
@@ -42,10 +83,14 @@ export class RateLimiterGuard implements CanActivate {
         });
         this.redisClient.on('error', (err: any) => {
           this.isRedisConnected = false;
-          this.logger.warn(`Redis connection error, falling back to in-memory limiter: ${err.message}`);
+          this.logger.warn(
+            `Redis connection error, falling back to in-memory limiter: ${err.message}`,
+          );
         });
       } catch {
-        this.logger.log('Redis package not found or unconfigured. Operating in single-instance in-memory rate limiting mode.');
+        this.logger.log(
+          'Redis package not found or unconfigured. Operating in single-instance in-memory rate limiting mode.',
+        );
       }
     }
   }
@@ -80,36 +125,47 @@ export class RateLimiterGuard implements CanActivate {
         }
         if (currentRequests > maxLimit) {
           throw new HttpException(
-            'Too Many Requests — Distributed Rate limit exceeded',
+            'Too Many Requests - Distributed Rate limit exceeded',
             HttpStatus.TOO_MANY_REQUESTS,
           );
         }
         return true;
       } catch (err) {
         if (err instanceof HttpException) throw err;
-        this.logger.warn(`Redis command failed, falling back to in-memory mode: ${err.message}`);
+        this.logger.warn(
+          `Redis command failed, falling back to in-memory mode: ${(err as any).message}`,
+        );
       }
     }
 
     // 2. In-Memory Sliding-Window Fallback Mode (Single-Instance Safe)
     const now = Date.now();
-    const record = this.clients.get(clientIp) || { timestamps: [] };
+    const record = this.clients.get(clientIp) ?? { timestamps: [], lastSeen: now };
 
-    // Clean up timestamps outside current window
-    record.timestamps = record.timestamps.filter(
-      (time) => now - time < this.WINDOW_MS,
-    );
+    // Slide the window: remove timestamps outside the current window
+    record.timestamps = record.timestamps.filter((time) => now - time < this.WINDOW_MS);
+    record.lastSeen = now;
 
     if (record.timestamps.length >= maxLimit) {
+      this.clients.set(clientIp, record);
       throw new HttpException(
-        'Too Many Requests — Rate limit exceeded',
+        'Too Many Requests - Rate limit exceeded',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
     record.timestamps.push(now);
+
+    // If the Map has grown beyond the cap, evict the oldest-seen entry to prevent
+    // unbounded memory growth (e.g. from IP spoofing or a large unique-IP burst).
+    if (this.clients.size >= this.MAX_CLIENTS && !this.clients.has(clientIp)) {
+      const oldestKey = this.clients.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.clients.delete(oldestKey);
+      }
+    }
+
     this.clients.set(clientIp, record);
     return true;
   }
 }
-

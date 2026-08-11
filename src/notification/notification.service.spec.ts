@@ -280,6 +280,54 @@ describe('NotificationService', () => {
         service.markAsRead('notif-uuid-1', 'attacker-user-uuid'),
       ).rejects.toThrow('not authorized');
     });
+
+    it('should be idempotent when marking an already-read notification as read', async () => {
+      const patient = { id: 'patient-uuid-1' } as PatientProfile;
+      const notification = makeNotif({ isRead: true }); // already read
+      const saved = makeNotif({ isRead: true });
+
+      patientRepo.findOne.mockResolvedValue(patient);
+      notifRepo.findOne.mockResolvedValue(notification);
+      notifRepo.save.mockResolvedValue(saved);
+
+      const result = await service.markAsRead('notif-uuid-1', 'user-uuid-1');
+
+      // Should still succeed (idempotent) — isRead stays true
+      expect(notification.isRead).toBe(true);
+      expect(notifRepo.save).toHaveBeenCalled();
+      expect(result.isRead).toBe(true);
+    });
+  });
+
+  // ─── Event-specific notification type tests ───────────────────────────────
+
+  describe('Notification type coverage', () => {
+    const allTypes = [
+      NotificationType.APPOINTMENT_BOOKED,
+      NotificationType.APPOINTMENT_CANCELLED,
+      NotificationType.APPOINTMENT_RESCHEDULED,
+    ];
+
+    allTypes.forEach((type) => {
+      it(`should create a notification of type ${type} and save it`, async () => {
+        const saved = makeNotif({ type, eventId: `${type}_appt-uuid-1` });
+        notifRepo.findOne.mockResolvedValue(null);
+        notifRepo.create.mockReturnValue(saved);
+        notifRepo.save.mockResolvedValue(saved);
+
+        const result = await service.createNotification({
+          patientId: 'patient-uuid-1',
+          type,
+          title: `Title for ${type}`,
+          message: `Message for ${type}`,
+          appointmentId: 'appt-uuid-1',
+          eventId: `${type}_appt-uuid-1`,
+        });
+
+        expect(result.type).toBe(type);
+        expect(notifRepo.save).toHaveBeenCalled();
+      });
+    });
   });
 
   // ─── Enum coverage ────────────────────────────────────────────────────────
