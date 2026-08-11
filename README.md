@@ -143,6 +143,7 @@ schedula-jagadeesh/
 ├── test-advanced-scheduling.js     # STREAM/WAVE Concurrency Test Suite (26 Scenarios)
 ├── test-rescheduling-suite.js      # Rescheduling & Cutoff Test Suite (12 Scenarios)
 ├── test-elastic-scheduling.js      # Elastic Shrink & Expand Engine Test Suite (18 Scenarios)
+├── test-notification-workflow.js    # Notification System & Workflow Integration Test Suite
 └── src/
     ├── main.ts                     # NestJS Bootstrap, CORS, ValidationPipe
     ├── app.module.ts              # Root AppModule, TypeORM connection, RateLimiterGuard
@@ -164,6 +165,13 @@ schedula-jagadeesh/
     │   ├── patient.controller.ts
     │   ├── patient.service.ts
     │   └── entities/patient-profile.entity.ts
+    ├── notification/              # Event-Based Notification Module
+    │   ├── notification.controller.ts
+    │   ├── notification.service.ts
+    │   ├── notification.module.ts
+    │   ├── dto/notification.dto.ts
+    │   ├── entities/notification.entity.ts
+    │   └── enums/notification-type.enum.ts
     ├── guards/                    # Security & Rate Limiting guards
     │   ├── jwt-auth.guard.ts
     │   ├── roles.guard.ts
@@ -187,7 +195,8 @@ schedula-jagadeesh/
         ├── 1784700000002-CreatePatientProfile.ts
         ├── 1784800000001-CreateDoctorAvailability.ts
         ├── 1784900000001-CreateAdvancedScheduling.ts
-        └── 1785000000001-AddElasticSchedulingMetadata.ts
+        ├── 1785000000001-AddElasticSchedulingMetadata.ts
+        └── 1785100000001-CreateNotifications.ts
 ```
 
 ---
@@ -210,6 +219,11 @@ WHERE status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL;
 CREATE UNIQUE INDEX idx_wave_window_token_unique 
 ON appointments (doctor_id, date, window, token) 
 WHERE status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL;
+
+-- Event-Based Notifications: Enforces DB-level event deduplication
+CREATE UNIQUE INDEX idx_notification_event_unique 
+ON notifications (event_id) 
+WHERE event_id IS NOT NULL;
 ```
 
 ---
@@ -324,7 +338,7 @@ npm run start:prod
 
 ## 🧪 Automated Test Suite Execution
 
-The repository includes **8 comprehensive test runner scripts** verifying **113 explicitly enumerated test cases** plus a **50-request high-contention stress test**:
+The repository includes **9 comprehensive test runner scripts** verifying **121 explicitly enumerated test cases** plus a **50-request high-contention stress test**:
 
 ```bash
 # 1. Type Check (Ensure 0 compilation errors)
@@ -345,13 +359,16 @@ node test-rescheduling-suite.js
 # 6. Run Elastic Scheduling Engine Suite (18 Test Cases)
 node test-elastic-scheduling.js
 
-# 7. Run Boundary Condition & Idempotent Edge-Case Suite (7 Test Cases)
+# 7. Run Event-Based Notification Workflow Suite (8 Test Cases)
+node test-notification-workflow.js
+
+# 8. Run Boundary Condition & Idempotent Edge-Case Suite (7 Test Cases)
 node test-edge-cases.js
 
-# 8. Run Direct PostgreSQL Partial Unique Index Invariant Suite (3 Test Cases - Code 23505)
+# 9. Run Direct PostgreSQL Partial Unique Index Invariant Suite (3 Test Cases - Code 23505)
 node test-db-partial-index.js
 
-# 9. Run 50-Way Parallel High-Contention Stress Suite (50 Parallel Requests - 1/49/0 Result)
+# 10. Run 50-Way Parallel High-Contention Stress Suite (50 Parallel Requests - 1/49/0 Result)
 node test-concurrency-stress.js
 ```
 
