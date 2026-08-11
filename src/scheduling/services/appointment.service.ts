@@ -989,8 +989,8 @@ export class AppointmentService {
         appointment.scheduleType = SchedulingType.STREAM;
         appointment.slotStartTime = targetStartTime;
         appointment.slotEndTime = targetEndTime;
-        appointment.window = null as any;
-        appointment.token = null as any;
+        appointment.window = null;
+        appointment.token = null;
       } else if (targetScheduleType === SchedulingType.WAVE) {
         if (!targetWindow) {
           throw new BadRequestException(
@@ -1068,8 +1068,8 @@ export class AppointmentService {
         appointment.scheduleType = SchedulingType.WAVE;
         appointment.window = targetWindow;
         appointment.token = assignedToken;
-        appointment.slotStartTime = null as any;
-        appointment.slotEndTime = null as any;
+        appointment.slotStartTime = null;
+        appointment.slotEndTime = null;
       }
 
       const saved = await queryRunner.manager.save(Appointment, appointment);

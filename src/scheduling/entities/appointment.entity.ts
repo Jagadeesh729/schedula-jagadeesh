@@ -38,34 +38,34 @@ export class Appointment {
   date!: string;
 
   @Column({ name: 'slot_start_time', type: 'varchar', nullable: true })
-  slotStartTime?: string;
+  slotStartTime?: string | null;
 
   @Column({ name: 'slot_end_time', type: 'varchar', nullable: true })
-  slotEndTime?: string;
+  slotEndTime?: string | null;
 
   @Column({ type: 'varchar', nullable: true })
-  window?: string;
+  window?: string | null;
 
   @Column({ type: 'int', nullable: true })
-  token?: number;
+  token?: number | null;
 
   @Column({ type: 'varchar', default: AppointmentStatus.CONFIRMED })
   status!: AppointmentStatus;
 
   @Column({ name: 'previous_date', type: 'varchar', nullable: true })
-  previousDate?: string;
+  previousDate?: string | null;
 
   @Column({ name: 'previous_slot_start_time', type: 'varchar', nullable: true })
-  previousSlotStartTime?: string;
+  previousSlotStartTime?: string | null;
 
   @Column({ name: 'previous_slot_end_time', type: 'varchar', nullable: true })
-  previousSlotEndTime?: string;
+  previousSlotEndTime?: string | null;
 
   @Column({ name: 'previous_window', type: 'varchar', nullable: true })
-  previousWindow?: string;
+  previousWindow?: string | null;
 
   @Column({ name: 'previous_token', type: 'int', nullable: true })
-  previousToken?: number;
+  previousToken?: number | null;
 
   @Column({ name: 'is_auto_rescheduled', type: 'boolean', default: false })
   isAutoRescheduled!: boolean;

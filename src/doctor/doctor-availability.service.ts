@@ -291,8 +291,8 @@ export class DoctorAvailabilityService {
               app.date = nextDateStr;
               app.slotStartTime = foundSlot.startTime;
               app.slotEndTime = foundSlot.endTime;
-              app.window = null as any;
-              app.token = null as any;
+              app.window = null;
+              app.token = null;
               autoRescheduled = true;
               break;
             }
@@ -333,8 +333,8 @@ export class DoctorAvailabilityService {
               app.date = nextDateStr;
               app.window = foundWindow;
               app.token = assignedToken;
-              app.slotStartTime = null as any;
-              app.slotEndTime = null as any;
+              app.slotStartTime = null;
+              app.slotEndTime = null;
               autoRescheduled = true;
               break;
             }
