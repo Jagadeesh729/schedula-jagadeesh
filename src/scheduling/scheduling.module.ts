@@ -16,6 +16,8 @@ import { AppointmentController } from './controllers/appointment.controller';
 import { SchedulingConfigService } from './services/scheduling-config.service';
 import { AppointmentService } from './services/appointment.service';
 
+import { NotificationModule } from '../notification/notification.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -26,6 +28,7 @@ import { AppointmentService } from './services/appointment.service';
       RecurringAvailability,
       CustomAvailability,
     ]),
+    NotificationModule,
   ],
   controllers: [
     DoctorsSchedulingController,

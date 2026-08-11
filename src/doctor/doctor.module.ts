@@ -10,6 +10,8 @@ import { DoctorController } from './doctor.controller';
 import { DoctorAvailabilityService } from './doctor-availability.service';
 import { DoctorAvailabilityController } from './doctor-availability.controller';
 
+import { NotificationModule } from '../notification/notification.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -19,6 +21,7 @@ import { DoctorAvailabilityController } from './doctor-availability.controller';
       Appointment,
       SchedulingConfig,
     ]),
+    NotificationModule,
   ],
   controllers: [DoctorController, DoctorAvailabilityController],
   providers: [DoctorService, DoctorAvailabilityService],

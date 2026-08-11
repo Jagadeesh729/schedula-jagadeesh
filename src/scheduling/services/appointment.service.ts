@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Appointment } from '../entities/appointment.entity';
 import { SchedulingConfig } from '../entities/scheduling-config.entity';
 import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
@@ -33,6 +33,9 @@ function hasErrorCode(error: unknown): error is { code: string } {
   );
 }
 
+import { NotificationService } from '../../notification/notification.service';
+import { NotificationType } from '../../notification/enums/notification-type.enum';
+
 @Injectable()
 export class AppointmentService {
   constructor(
@@ -49,6 +52,7 @@ export class AppointmentService {
     @InjectRepository(CustomAvailability)
     private readonly overrideRepo: Repository<CustomAvailability>,
     private readonly dataSource: DataSource,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private timeToMinutes(time: string): number {
@@ -438,7 +442,20 @@ export class AppointmentService {
         status: AppointmentStatus.CONFIRMED,
       });
 
-      return await this.appointmentRepo.save(appointment);
+      const saved = await this.appointmentRepo.save(appointment);
+      const doctorName = doctor.fullName || doctor.user?.name || '';
+      const timeStr = saved.slotStartTime || saved.window || '';
+      if (saved.patientId) {
+        await this.triggerNotification(
+          saved.patientId,
+          NotificationType.APPOINTMENT_BOOKED,
+          saved.id,
+          doctorName,
+          saved.date,
+          timeStr,
+        );
+      }
+      return saved;
     } else if (effectiveStrategy === SchedulingType.WAVE) {
       if (!dto.window) {
         throw new BadRequestException(
@@ -502,7 +519,21 @@ export class AppointmentService {
         });
 
         try {
-          return await manager.save(appointment);
+          const saved = await manager.save(appointment);
+          const doctorName = doctor.fullName || doctor.user?.name || '';
+          const timeStr = saved.window || saved.slotStartTime || '';
+          if (saved.patientId) {
+            await this.triggerNotification(
+              saved.patientId,
+              NotificationType.APPOINTMENT_BOOKED,
+              saved.id,
+              doctorName,
+              saved.date,
+              timeStr,
+              manager,
+            );
+          }
+          return saved;
         } catch (error: unknown) {
           if (hasErrorCode(error) && error.code === '23505') {
             throw new ConflictException('Wave booking could not be completed');
@@ -513,6 +544,50 @@ export class AppointmentService {
     }
 
     throw new BadRequestException('Invalid scheduleType');
+  }
+
+  private async triggerNotification(
+    patientId: string,
+    type: NotificationType,
+    appointmentId: string,
+    doctorName: string,
+    date: string,
+    timeOrWindow: string,
+    manager?: EntityManager,
+    customEventKey?: string,
+  ): Promise<void> {
+    try {
+      let title = '';
+      let message = '';
+      const doctorPart = doctorName ? `with Dr. ${doctorName} ` : '';
+
+      if (type === NotificationType.APPOINTMENT_BOOKED) {
+        title = 'Appointment Booked';
+        message = `Your appointment ${doctorPart}has been booked successfully for ${date} at ${timeOrWindow}.`;
+      } else if (type === NotificationType.APPOINTMENT_CANCELLED) {
+        title = 'Appointment Cancelled';
+        message = `Your appointment scheduled on ${date} at ${timeOrWindow} has been cancelled.`;
+      } else if (type === NotificationType.APPOINTMENT_RESCHEDULED) {
+        title = 'Appointment Rescheduled';
+        message = `Your appointment has been rescheduled to ${date} at ${timeOrWindow}.`;
+      }
+
+      const eventId = customEventKey || `${type}_${appointmentId}`;
+
+      await this.notificationService.createNotification(
+        {
+          patientId,
+          type,
+          title,
+          message,
+          appointmentId,
+          eventId,
+        },
+        manager,
+      );
+    } catch (_) {
+      // Non-blocking notification trigger
+    }
   }
 
   async getPatientAppointments(
@@ -625,6 +700,18 @@ export class AppointmentService {
 
     appointment.status = AppointmentStatus.CANCELLED;
     const saved = await this.appointmentRepo.save(appointment);
+
+    const timeStr = saved.slotStartTime || saved.window || '';
+    if (saved.patientId) {
+      await this.triggerNotification(
+        saved.patientId,
+        NotificationType.APPOINTMENT_CANCELLED,
+        saved.id,
+        '',
+        saved.date,
+        timeStr,
+      );
+    }
 
     return {
       appointmentId: saved.id,
@@ -987,6 +1074,20 @@ export class AppointmentService {
 
       const saved = await queryRunner.manager.save(Appointment, appointment);
       await queryRunner.commitTransaction();
+
+      const timeStr = saved.slotStartTime || saved.window || '';
+      if (saved.patientId) {
+        await this.triggerNotification(
+          saved.patientId,
+          NotificationType.APPOINTMENT_RESCHEDULED,
+          saved.id,
+          '',
+          saved.date,
+          timeStr,
+          undefined,
+          `RESCHEDULED_${saved.id}_${saved.date}_${timeStr}`,
+        );
+      }
 
       return {
         appointmentId: saved.id,

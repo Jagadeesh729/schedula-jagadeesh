@@ -29,6 +29,9 @@ const WEEKDAY_NAMES: Weekday[] = [
   Weekday.Saturday,
 ];
 
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/enums/notification-type.enum';
+
 @Injectable()
 export class DoctorAvailabilityService {
   constructor(
@@ -43,6 +46,7 @@ export class DoctorAvailabilityService {
     @InjectRepository(SchedulingConfig)
     private readonly configRepo: Repository<SchedulingConfig>,
     private readonly dataSource: DataSource,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // ─── Private Helpers ────────────────────────────────────────────────────────

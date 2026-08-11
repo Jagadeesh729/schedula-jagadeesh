@@ -273,6 +273,8 @@ WHERE status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL;
 | `PATCH`| `/appointment/:id/reschedule` | `/appointments/:id/reschedule` | Yes (`PATIENT`) | Reschedule appointment (30-min cutoff) |
 | `GET` | `/doctor/appointments` | — | Yes (`DOCTOR`) | List doctor's appointments by date range |
 | `GET` | `/doctor/appointments/today` | — | Yes (`DOCTOR`) | Get doctor's appointments scheduled for today |
+| `GET` | `/notifications` | `/notification` | Yes (`PATIENT`) | Get patient's notifications (latest first) |
+| `PATCH`| `/notifications/:id/read` | `/notification/:id/read` | Yes (`PATIENT`) | Mark notification as read |
 
 ---
 

@@ -17,6 +17,9 @@ import { CreateDoctorAvailability1784800000001 } from './migrations/178480000000
 import { CreateAdvancedScheduling1784900000001 } from './migrations/1784900000001-CreateAdvancedScheduling';
 import { AddElasticSchedulingMetadata1785000000001 } from './migrations/1785000000001-AddElasticSchedulingMetadata';
 
+import { NotificationModule } from './notification/notification.module';
+import { CreateNotifications1785100000001 } from './migrations/1785100000001-CreateNotifications';
+
 dotenv.config();
 
 @Module({
@@ -38,6 +41,7 @@ dotenv.config();
         CreateDoctorAvailability1784800000001,
         CreateAdvancedScheduling1784900000001,
         AddElasticSchedulingMetadata1785000000001,
+        CreateNotifications1785100000001,
       ],
       migrationsRun: true, // Runs migrations automatically on startup
     }),
@@ -46,6 +50,7 @@ dotenv.config();
     DoctorModule,
     PatientModule,
     SchedulingModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
