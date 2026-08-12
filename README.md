@@ -289,6 +289,9 @@ WHERE event_id IS NOT NULL;
 | `GET` | `/doctor/appointments/today` | — | Yes (`DOCTOR`) | Get doctor's appointments scheduled for today |
 | `GET` | `/notifications` | `/notification` | Yes (`PATIENT`) | Get patient's notifications (latest first) |
 | `PATCH`| `/notifications/:id/read` | `/notification/:id/read` | Yes (`PATIENT`) | Mark notification as read |
+| `PATCH`| `/notifications/read-all` | `/notification/read-all` | Yes (`PATIENT`) | Mark all unread notifications as read |
+| `DELETE`| `/notifications/:id` | `/notification/:id` | Yes (`PATIENT`) | Delete a specific notification |
+| `DELETE`| `/notifications` | `/notification` | Yes (`PATIENT`) | Delete all notifications for the patient |
 
 ---
 

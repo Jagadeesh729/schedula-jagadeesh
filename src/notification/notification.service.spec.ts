@@ -32,6 +32,10 @@ describe('NotificationService', () => {
     notifRepo = {
       findOne: jest.fn(),
       find: jest.fn(),
+      findAndCount: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      remove: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
     };
@@ -185,25 +189,29 @@ describe('NotificationService', () => {
   // ─── getPatientNotifications ──────────────────────────────────────────────
 
   describe('getPatientNotifications', () => {
-    it('should return notifications ordered by createdAt DESC for valid patient', async () => {
+    it('should return notifications ordered by createdAt DESC for valid patient, along with counts', async () => {
       const patient = { id: 'patient-uuid-1' } as PatientProfile;
       const notifications = [
-        makeNotif({ id: 'notif-2', createdAt: new Date('2026-06-26T10:00:00Z') }),
-        makeNotif({ id: 'notif-1', createdAt: new Date('2026-06-25T10:00:00Z') }),
+        makeNotif({ id: 'notif-2', createdAt: new Date('2026-06-26T10:00:00Z'), isRead: false }),
+        makeNotif({ id: 'notif-1', createdAt: new Date('2026-06-25T10:00:00Z'), isRead: true }),
       ];
       patientRepo.findOne.mockResolvedValue(patient);
-      notifRepo.find.mockResolvedValue(notifications);
+      notifRepo.findAndCount.mockResolvedValue([notifications, 2]);
 
       const result = await service.getPatientNotifications('user-uuid-1');
 
       expect(patientRepo.findOne).toHaveBeenCalledWith({
         where: { user: { id: 'user-uuid-1' } },
       });
-      expect(notifRepo.find).toHaveBeenCalledWith({
+      expect(notifRepo.findAndCount).toHaveBeenCalledWith({
         where: { patientId: 'patient-uuid-1' },
         order: { createdAt: 'DESC' },
       });
-      expect(result).toEqual(notifications);
+      expect(result).toEqual({
+        data: notifications,
+        totalCount: 2,
+        unreadCount: 1,
+      });
     });
 
     it('should throw NotFoundException if patient profile does not exist', async () => {
@@ -214,12 +222,12 @@ describe('NotificationService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should return empty array when patient has no notifications', async () => {
+    it('should return empty array and 0 counts when patient has no notifications', async () => {
       patientRepo.findOne.mockResolvedValue({ id: 'patient-uuid-1' });
-      notifRepo.find.mockResolvedValue([]);
+      notifRepo.findAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.getPatientNotifications('user-uuid-1');
-      expect(result).toEqual([]);
+      expect(result).toEqual({ data: [], totalCount: 0, unreadCount: 0 });
     });
   });
 
@@ -296,6 +304,61 @@ describe('NotificationService', () => {
       expect(notification.isRead).toBe(true);
       expect(notifRepo.save).toHaveBeenCalled();
       expect(result.isRead).toBe(true);
+    });
+  });
+
+  // ─── markAllAsRead ────────────────────────────────────────────────────────
+
+  describe('markAllAsRead', () => {
+    it('should mark all unread notifications as read for a patient', async () => {
+      patientRepo.findOne.mockResolvedValue({ id: 'patient-uuid-1' });
+      notifRepo.update.mockResolvedValue({ affected: 3 });
+
+      const result = await service.markAllAsRead('user-uuid-1');
+
+      expect(notifRepo.update).toHaveBeenCalledWith(
+        { patientId: 'patient-uuid-1', isRead: false },
+        { isRead: true },
+      );
+      expect(result).toEqual({ updatedCount: 3 });
+    });
+  });
+
+  // ─── deleteNotification ───────────────────────────────────────────────────
+
+  describe('deleteNotification', () => {
+    it('should delete a specific notification', async () => {
+      const patient = { id: 'patient-uuid-1' } as PatientProfile;
+      const notification = makeNotif();
+      patientRepo.findOne.mockResolvedValue(patient);
+      notifRepo.findOne.mockResolvedValue(notification);
+
+      await service.deleteNotification('notif-uuid-1', 'user-uuid-1');
+
+      expect(notifRepo.remove).toHaveBeenCalledWith(notification);
+    });
+
+    it('should throw ForbiddenException if deleting another patient\'s notification', async () => {
+      patientRepo.findOne.mockResolvedValue({ id: 'patient-uuid-ATTACKER' });
+      notifRepo.findOne.mockResolvedValue(makeNotif({ patientId: 'patient-uuid-VICTIM' }));
+
+      await expect(
+        service.deleteNotification('notif-uuid-1', 'user-uuid-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ─── deleteAllNotifications ───────────────────────────────────────────────
+
+  describe('deleteAllNotifications', () => {
+    it('should delete all notifications for a patient', async () => {
+      patientRepo.findOne.mockResolvedValue({ id: 'patient-uuid-1' });
+      notifRepo.delete.mockResolvedValue({ affected: 5 });
+
+      const result = await service.deleteAllNotifications('user-uuid-1');
+
+      expect(notifRepo.delete).toHaveBeenCalledWith({ patientId: 'patient-uuid-1' });
+      expect(result).toEqual({ deletedCount: 5 });
     });
   });
 

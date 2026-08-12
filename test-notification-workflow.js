@@ -177,10 +177,10 @@ async function runNotificationWorkflowSuite() {
 
   const notifs1 = await request('GET', '/notifications', null, patToken);
   assert(notifs1.status === 200, 'GET /notifications returns 200 OK');
-  assert(Array.isArray(notifs1.body), 'Notifications body is an array');
-  assert(notifs1.body.length >= 1, 'Patient received at least 1 notification');
+  assert(Array.isArray(notifs1.body.data), 'Notifications body is an array');
+  assert(notifs1.body.data.length >= 1, 'Patient received at least 1 notification');
 
-  const latestNotif1 = notifs1.body[0];
+  const latestNotif1 = notifs1.body.data[0];
   assert(latestNotif1.type === 'APPOINTMENT_BOOKED', 'Notification type is APPOINTMENT_BOOKED');
   assert(latestNotif1.title === 'Appointment Booked', 'Title is Appointment Booked');
   assert(latestNotif1.message.includes('booked successfully'), 'Message contains booking confirmation');
@@ -193,10 +193,10 @@ async function runNotificationWorkflowSuite() {
 
   const notifs2 = await request('GET', '/notifications', null, patToken);
   assert(notifs2.status === 200, 'GET /notifications returns 200 OK');
-  assert(notifs2.body.length >= 2, 'Patient received 2nd notification');
+  assert(notifs2.body.data.length >= 2, 'Patient received 2nd notification');
 
   // Latest notification should appear first (createdAt DESC)
-  const latestNotif2 = notifs2.body[0];
+  const latestNotif2 = notifs2.body.data[0];
   assert(latestNotif2.type === 'APPOINTMENT_CANCELLED', 'Latest notification type is APPOINTMENT_CANCELLED');
   assert(latestNotif2.title === 'Appointment Cancelled', 'Title is Appointment Cancelled');
   assert(latestNotif2.message.includes('cancelled'), 'Message contains cancellation info');
@@ -220,7 +220,7 @@ async function runNotificationWorkflowSuite() {
 
   const notifs3 = await request('GET', '/notifications', null, patToken);
   assert(notifs3.status === 200, 'GET /notifications returns 200 OK');
-  const latestNotif3 = notifs3.body[0];
+  const latestNotif3 = notifs3.body.data[0];
   assert(latestNotif3.type === 'APPOINTMENT_RESCHEDULED', 'Latest notification type is APPOINTMENT_RESCHEDULED');
   assert(latestNotif3.title === 'Appointment Rescheduled', 'Title is Appointment Rescheduled');
   assert(latestNotif3.message.includes('rescheduled to'), 'Message contains rescheduling info');
@@ -260,7 +260,7 @@ async function runNotificationWorkflowSuite() {
 
     const notifsAfterShrink = await request('GET', '/notifications', null, patToken);
     assert(notifsAfterShrink.status === 200, 'GET /notifications after shrink returns 200 OK');
-    const shrinkNotif = notifsAfterShrink.body[0];
+    const shrinkNotif = notifsAfterShrink.body.data[0];
     assert(shrinkNotif.type === 'APPOINTMENT_RESCHEDULED', 'Elastic shrink auto-rescheduled appointment created APPOINTMENT_RESCHEDULED notification');
   }
 

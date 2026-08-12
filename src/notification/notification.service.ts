@@ -64,18 +64,22 @@ export class NotificationService {
   }
 
   /**
-   * Retrieve all notifications for the authenticated patient, ordered latest first (createdAt DESC).
+   * Retrieve all notifications for the authenticated patient, ordered latest first (createdAt DESC), with counts.
    */
-  async getPatientNotifications(userId: string): Promise<Notification[]> {
+  async getPatientNotifications(userId: string): Promise<{ data: Notification[]; totalCount: number; unreadCount: number }> {
     const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
     if (!patient) {
       throw new NotFoundException('Patient profile not found');
     }
 
-    return this.notificationRepo.find({
+    const [data, totalCount] = await this.notificationRepo.findAndCount({
       where: { patientId: patient.id },
       order: { createdAt: 'DESC' },
     });
+
+    const unreadCount = data.filter((n) => !n.isRead).length;
+
+    return { data, totalCount, unreadCount };
   }
 
   /**
@@ -98,5 +102,57 @@ export class NotificationService {
 
     notification.isRead = true;
     return this.notificationRepo.save(notification);
+  }
+
+  /**
+   * Mark all unread notifications as read for the patient.
+   */
+  async markAllAsRead(userId: string): Promise<{ updatedCount: number }> {
+    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+    if (!patient) {
+      throw new NotFoundException('Patient profile not found');
+    }
+
+    const result = await this.notificationRepo.update(
+      { patientId: patient.id, isRead: false },
+      { isRead: true },
+    );
+
+    return { updatedCount: result.affected || 0 };
+  }
+
+  /**
+   * Delete a specific notification.
+   */
+  async deleteNotification(notificationId: string, userId: string): Promise<void> {
+    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+    if (!patient) {
+      throw new NotFoundException('Patient profile not found');
+    }
+
+    const notification = await this.notificationRepo.findOne({ where: { id: notificationId } });
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    if (notification.patientId !== patient.id) {
+      throw new ForbiddenException('You are not authorized to delete this notification');
+    }
+
+    await this.notificationRepo.remove(notification);
+  }
+
+  /**
+   * Delete all notifications for the patient.
+   */
+  async deleteAllNotifications(userId: string): Promise<{ deletedCount: number }> {
+    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+    if (!patient) {
+      throw new NotFoundException('Patient profile not found');
+    }
+
+    const result = await this.notificationRepo.delete({ patientId: patient.id });
+
+    return { deletedCount: result.affected || 0 };
   }
 }
