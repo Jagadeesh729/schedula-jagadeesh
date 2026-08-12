@@ -48,9 +48,13 @@ export class CreateDoctorAvailability1784800000001 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_custom_availabilities_doctor_date"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_custom_availabilities_doctor_date"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "custom_availabilities"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_recurring_availabilities_doctor_weekday"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_recurring_availabilities_doctor_weekday"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "recurring_availabilities"`);
   }
 }

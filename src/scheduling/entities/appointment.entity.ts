@@ -18,14 +18,23 @@ import { AppointmentStatus } from '../enums/appointment-status.enum';
   unique: true,
   where: "status = 'CONFIRMED' AND slot_start_time IS NOT NULL",
 })
-@Index('idx_wave_window_patient_unique', ['doctorId', 'date', 'window', 'patientId'], {
-  unique: true,
-  where: "status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL",
-})
-@Index('idx_wave_window_token_unique', ['doctorId', 'date', 'window', 'token'], {
-  unique: true,
-  where: "status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL",
-})
+@Index(
+  'idx_wave_window_patient_unique',
+  ['doctorId', 'date', 'window', 'patientId'],
+  {
+    unique: true,
+    where:
+      "status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL",
+  },
+)
+@Index(
+  'idx_wave_window_token_unique',
+  ['doctorId', 'date', 'window', 'token'],
+  {
+    unique: true,
+    where: "status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL",
+  },
+)
 export class Appointment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

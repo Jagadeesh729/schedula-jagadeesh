@@ -123,7 +123,6 @@ export class DoctorSchedulingConfigController {
   }
 }
 
-
 @Controller('doctor')
 export class DoctorAppointmentsController {
   constructor(private readonly appointmentService: AppointmentService) {}

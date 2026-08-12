@@ -51,14 +51,17 @@ export class RateLimiterGuard implements CanActivate {
    * Runs every 5 minutes; removes entries not seen in the last 2x window duration.
    */
   private startEvictionTimer(): void {
-    this.evictionInterval = setInterval(() => {
-      const staleThreshold = Date.now() - this.WINDOW_MS * 2;
-      for (const [ip, record] of this.clients) {
-        if (record.lastSeen < staleThreshold) {
-          this.clients.delete(ip);
+    this.evictionInterval = setInterval(
+      () => {
+        const staleThreshold = Date.now() - this.WINDOW_MS * 2;
+        for (const [ip, record] of this.clients) {
+          if (record.lastSeen < staleThreshold) {
+            this.clients.delete(ip);
+          }
         }
-      }
-    }, 5 * 60 * 1000); // every 5 minutes
+      },
+      5 * 60 * 1000,
+    ); // every 5 minutes
 
     // Unref so the timer doesn't prevent process exit in tests
     if (this.evictionInterval.unref) {
@@ -66,7 +69,7 @@ export class RateLimiterGuard implements CanActivate {
     }
   }
 
-  private async initRedisIfConfigured() {
+  private initRedisIfConfigured(): void {
     const redisUrl = process.env.REDIS_URL || process.env.REDIS_HOST;
     if (redisUrl) {
       try {
@@ -79,7 +82,9 @@ export class RateLimiterGuard implements CanActivate {
         });
         this.redisClient.on('connect', () => {
           this.isRedisConnected = true;
-          this.logger.log('Distributed Redis Rate Limiter initialized successfully.');
+          this.logger.log(
+            'Distributed Redis Rate Limiter initialized successfully.',
+          );
         });
         this.redisClient.on('error', (err: any) => {
           this.isRedisConnected = false;
@@ -141,10 +146,15 @@ export class RateLimiterGuard implements CanActivate {
 
     // 2. In-Memory Sliding-Window Fallback Mode (Single-Instance Safe)
     const now = Date.now();
-    const record = this.clients.get(clientIp) ?? { timestamps: [], lastSeen: now };
+    const record = this.clients.get(clientIp) ?? {
+      timestamps: [],
+      lastSeen: now,
+    };
 
     // Slide the window: remove timestamps outside the current window
-    record.timestamps = record.timestamps.filter((time) => now - time < this.WINDOW_MS);
+    record.timestamps = record.timestamps.filter(
+      (time) => now - time < this.WINDOW_MS,
+    );
     record.lastSeen = now;
 
     if (record.timestamps.length >= maxLimit) {

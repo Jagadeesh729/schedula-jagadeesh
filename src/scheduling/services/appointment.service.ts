@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository, QueryFailedError } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Appointment } from '../entities/appointment.entity';
 import { SchedulingConfig } from '../entities/scheduling-config.entity';
 import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
@@ -14,7 +14,10 @@ import { PatientProfile } from '../../patient/entities/patient-profile.entity';
 import { RecurringAvailability } from '../../doctor/entities/recurring-availability.entity';
 import { CustomAvailability } from '../../doctor/entities/custom-availability.entity';
 import { Weekday } from '../../doctor/enums/weekday.enum';
-import { CreateAppointmentDto, RescheduleAppointmentDto } from '../dto/scheduling.dto';
+import {
+  CreateAppointmentDto,
+  RescheduleAppointmentDto,
+} from '../dto/scheduling.dto';
 import { SchedulingType } from '../enums/scheduling-type.enum';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 
@@ -76,7 +79,11 @@ export class AppointmentService {
     const month = Number(monthStr);
     const day = Number(dayStr);
 
-    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    if (
+      !Number.isInteger(year) ||
+      !Number.isInteger(month) ||
+      !Number.isInteger(day)
+    ) {
       throw new BadRequestException(`${dateStr} is not a valid calendar date`);
     }
 
@@ -385,12 +392,16 @@ export class AppointmentService {
 
       const baseSlotDuration = config.slotDuration || 15;
       if (dto.durationMinutes) {
-        if (dto.durationMinutes <= 0 || dto.durationMinutes % baseSlotDuration !== 0) {
+        if (
+          dto.durationMinutes <= 0 ||
+          dto.durationMinutes % baseSlotDuration !== 0
+        ) {
           throw new BadRequestException(
             `durationMinutes must be a positive multiple of base slot duration (${baseSlotDuration})`,
           );
         }
-        const calculatedEndMin = this.timeToMinutes(dto.slot.startTime) + dto.durationMinutes;
+        const calculatedEndMin =
+          this.timeToMinutes(dto.slot.startTime) + dto.durationMinutes;
         dto.slot.endTime = this.minutesToTime(calculatedEndMin);
       }
 
@@ -447,7 +458,9 @@ export class AppointmentService {
         saved = await this.appointmentRepo.save(appointment);
       } catch (error: unknown) {
         if (hasErrorCode(error) && error.code === '23505') {
-          throw new ConflictException('Slot already booked due to concurrent request');
+          throw new ConflictException(
+            'Slot already booked due to concurrent request',
+          );
         }
         throw error;
       }
@@ -593,7 +606,7 @@ export class AppointmentService {
         },
         manager,
       );
-    } catch (_) {
+    } catch {
       // Non-blocking notification trigger
     }
   }
@@ -829,7 +842,7 @@ export class AppointmentService {
             };
           }
         }
-      } catch (_) {
+      } catch {
         // Skip invalid configurations or dates
       }
     }
@@ -874,13 +887,19 @@ export class AppointmentService {
       }
 
       if (appointment.status === AppointmentStatus.CANCELLED) {
-        throw new BadRequestException('Cannot reschedule a cancelled appointment');
+        throw new BadRequestException(
+          'Cannot reschedule a cancelled appointment',
+        );
       }
 
       const currentStartTime =
         appointment.slotStartTime ||
         (appointment.window ? appointment.window.split('-')[0] : undefined);
-      this.validate30MinCutoff(appointment.date, currentStartTime, 'reschedule');
+      this.validate30MinCutoff(
+        appointment.date,
+        currentStartTime,
+        'reschedule',
+      );
 
       this.validateCalendarDate(dto.date);
 
@@ -931,7 +950,9 @@ export class AppointmentService {
       }
 
       if (isSameDate && isSameTime) {
-        throw new BadRequestException('Cannot reschedule to the same slot/time');
+        throw new BadRequestException(
+          'Cannot reschedule to the same slot/time',
+        );
       }
 
       const doctorId = appointment.doctorId;

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddElasticSchedulingMetadata1785000000001
-  implements MigrationInterface
-{
+export class AddElasticSchedulingMetadata1785000000001 implements MigrationInterface {
   name = 'AddElasticSchedulingMetadata1785000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

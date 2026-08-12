@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateAdvancedScheduling1784900000001
-  implements MigrationInterface
-{
+export class CreateAdvancedScheduling1784900000001 implements MigrationInterface {
   name = 'CreateAdvancedScheduling1784900000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -83,9 +81,7 @@ export class CreateAdvancedScheduling1784900000001
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_stream_slot_unique";`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_stream_slot_unique";`);
     await queryRunner.query(
       `DROP INDEX IF EXISTS "idx_wave_window_token_unique";`,
     );

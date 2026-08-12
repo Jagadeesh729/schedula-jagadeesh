@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { PatientService } from './patient.service';
 import { CreatePatientProfileDto } from './dto/create-patient-profile.dto';
 import { UpdatePatientProfileDto } from './dto/update-patient-profile.dto';
@@ -20,7 +28,10 @@ export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
   @Post()
-  async createProfile(@Request() req: RequestWithUser, @Body() dto: CreatePatientProfileDto) {
+  async createProfile(
+    @Request() req: RequestWithUser,
+    @Body() dto: CreatePatientProfileDto,
+  ) {
     return this.patientService.create(req.user.id, dto);
   }
 
@@ -30,8 +41,10 @@ export class PatientController {
   }
 
   @Patch()
-  async updateProfile(@Request() req: RequestWithUser, @Body() dto: UpdatePatientProfileDto) {
+  async updateProfile(
+    @Request() req: RequestWithUser,
+    @Body() dto: UpdatePatientProfileDto,
+  ) {
     return this.patientService.update(req.user.id, dto);
   }
 }
-

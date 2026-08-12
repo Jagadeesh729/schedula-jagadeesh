@@ -30,10 +30,15 @@ interface RequestWithUser {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('DOCTOR')
 export class DoctorAvailabilityController {
-  constructor(private readonly availabilityService: DoctorAvailabilityService) {}
+  constructor(
+    private readonly availabilityService: DoctorAvailabilityService,
+  ) {}
 
   @Post()
-  async createRecurring(@Request() req: RequestWithUser, @Body() dto: CreateRecurringAvailabilityDto) {
+  async createRecurring(
+    @Request() req: RequestWithUser,
+    @Body() dto: CreateRecurringAvailabilityDto,
+  ) {
     return this.availabilityService.createRecurring(req.user.id, dto);
   }
 
@@ -44,12 +49,18 @@ export class DoctorAvailabilityController {
 
   // NOTE: Static routes MUST be declared before dynamic /:id routes.
   @Get('date')
-  async getByDate(@Request() req: RequestWithUser, @Query('date') date: string) {
+  async getByDate(
+    @Request() req: RequestWithUser,
+    @Query('date') date: string,
+  ) {
     return this.availabilityService.getByDate(req.user.id, date);
   }
 
   @Post('override')
-  async createOverride(@Request() req: RequestWithUser, @Body() dto: CreateCustomAvailabilityDto) {
+  async createOverride(
+    @Request() req: RequestWithUser,
+    @Body() dto: CreateCustomAvailabilityDto,
+  ) {
     return this.availabilityService.createOverride(req.user.id, dto);
   }
 
@@ -60,7 +71,12 @@ export class DoctorAvailabilityController {
     @Query('startTime') startTime?: string,
     @Query('endTime') endTime?: string,
   ) {
-    return this.availabilityService.previewShrink(req.user.id, id, startTime, endTime);
+    return this.availabilityService.previewShrink(
+      req.user.id,
+      id,
+      startTime,
+      endTime,
+    );
   }
 
   @Patch(':id')
@@ -73,8 +89,10 @@ export class DoctorAvailabilityController {
   }
 
   @Delete(':id')
-  async deleteRecurring(@Request() req: RequestWithUser, @Param('id', ParseUUIDPipe) id: string) {
+  async deleteRecurring(
+    @Request() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.availabilityService.deleteRecurring(req.user.id, id);
   }
 }
-

@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -10,16 +10,18 @@ async function bootstrap() {
       process.env.JWT_SECRET === 'supersecretkey' ||
       process.env.JWT_SECRET === 'super_secret_key_for_jwt')
   ) {
-    import('@nestjs/common').then(({ Logger }) => {
-      Logger.error('FATAL: Production JWT_SECRET environment variable is unset or insecure.');
-    });
+    Logger.error(
+      'FATAL: Production JWT_SECRET environment variable is unset or insecure.',
+    );
     process.exit(1);
   }
 
   const app = await NestFactory.create(AppModule);
-  
+
   // Enable express proxy trust for rate limiter X-Forwarded-For header validation
-  const expressApp = app.getHttpAdapter().getInstance();
+  const expressApp = app.getHttpAdapter().getInstance() as {
+    set?: (setting: string, val: boolean) => void;
+  };
   if (expressApp && typeof expressApp.set === 'function') {
     expressApp.set('trust proxy', true);
   }
@@ -36,5 +38,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
-bootstrap();
-
+void bootstrap();

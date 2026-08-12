@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DoctorProfile } from './entities/doctor-profile.entity';
@@ -13,7 +17,10 @@ export class DoctorService {
     private readonly doctorRepository: Repository<DoctorProfile>,
   ) {}
 
-  async create(userId: string, dto: CreateDoctorProfileDto): Promise<DoctorProfile> {
+  async create(
+    userId: string,
+    dto: CreateDoctorProfileDto,
+  ): Promise<DoctorProfile> {
     const existing = await this.doctorRepository.findOne({
       where: { user: { id: userId } },
     });
@@ -39,7 +46,10 @@ export class DoctorService {
     return profile;
   }
 
-  async update(userId: string, dto: UpdateDoctorProfileDto): Promise<DoctorProfile> {
+  async update(
+    userId: string,
+    dto: UpdateDoctorProfileDto,
+  ): Promise<DoctorProfile> {
     const profile = await this.findOne(userId);
     Object.assign(profile, dto);
     return this.doctorRepository.save(profile);

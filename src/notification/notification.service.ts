@@ -26,7 +26,9 @@ export class NotificationService {
     dto: CreateNotificationDto,
     manager?: EntityManager,
   ): Promise<Notification> {
-    const repo = manager ? manager.getRepository(Notification) : this.notificationRepo;
+    const repo = manager
+      ? manager.getRepository(Notification)
+      : this.notificationRepo;
 
     if (dto.eventId) {
       const existing = await repo.findOne({ where: { eventId: dto.eventId } });
@@ -54,7 +56,9 @@ export class NotificationService {
         (err as { code: string }).code === '23505' &&
         dto.eventId
       ) {
-        const existing = await repo.findOne({ where: { eventId: dto.eventId } });
+        const existing = await repo.findOne({
+          where: { eventId: dto.eventId },
+        });
         if (existing) {
           return existing;
         }
@@ -66,8 +70,14 @@ export class NotificationService {
   /**
    * Retrieve all notifications for the authenticated patient, ordered latest first (createdAt DESC), with counts.
    */
-  async getPatientNotifications(userId: string): Promise<{ data: Notification[]; totalCount: number; unreadCount: number }> {
-    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+  async getPatientNotifications(userId: string): Promise<{
+    data: Notification[];
+    totalCount: number;
+    unreadCount: number;
+  }> {
+    const patient = await this.patientProfileRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!patient) {
       throw new NotFoundException('Patient profile not found');
     }
@@ -85,19 +95,28 @@ export class NotificationService {
   /**
    * Mark a specific notification as read.
    */
-  async markAsRead(notificationId: string, userId: string): Promise<Notification> {
-    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+  async markAsRead(
+    notificationId: string,
+    userId: string,
+  ): Promise<Notification> {
+    const patient = await this.patientProfileRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!patient) {
       throw new NotFoundException('Patient profile not found');
     }
 
-    const notification = await this.notificationRepo.findOne({ where: { id: notificationId } });
+    const notification = await this.notificationRepo.findOne({
+      where: { id: notificationId },
+    });
     if (!notification) {
       throw new NotFoundException('Notification not found');
     }
 
     if (notification.patientId !== patient.id) {
-      throw new ForbiddenException('You are not authorized to modify this notification');
+      throw new ForbiddenException(
+        'You are not authorized to modify this notification',
+      );
     }
 
     notification.isRead = true;
@@ -108,7 +127,9 @@ export class NotificationService {
    * Mark all unread notifications as read for the patient.
    */
   async markAllAsRead(userId: string): Promise<{ updatedCount: number }> {
-    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+    const patient = await this.patientProfileRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!patient) {
       throw new NotFoundException('Patient profile not found');
     }
@@ -124,19 +145,28 @@ export class NotificationService {
   /**
    * Delete a specific notification.
    */
-  async deleteNotification(notificationId: string, userId: string): Promise<void> {
-    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+  async deleteNotification(
+    notificationId: string,
+    userId: string,
+  ): Promise<void> {
+    const patient = await this.patientProfileRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!patient) {
       throw new NotFoundException('Patient profile not found');
     }
 
-    const notification = await this.notificationRepo.findOne({ where: { id: notificationId } });
+    const notification = await this.notificationRepo.findOne({
+      where: { id: notificationId },
+    });
     if (!notification) {
       throw new NotFoundException('Notification not found');
     }
 
     if (notification.patientId !== patient.id) {
-      throw new ForbiddenException('You are not authorized to delete this notification');
+      throw new ForbiddenException(
+        'You are not authorized to delete this notification',
+      );
     }
 
     await this.notificationRepo.remove(notification);
@@ -145,13 +175,19 @@ export class NotificationService {
   /**
    * Delete all notifications for the patient.
    */
-  async deleteAllNotifications(userId: string): Promise<{ deletedCount: number }> {
-    const patient = await this.patientProfileRepo.findOne({ where: { user: { id: userId } } });
+  async deleteAllNotifications(
+    userId: string,
+  ): Promise<{ deletedCount: number }> {
+    const patient = await this.patientProfileRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!patient) {
       throw new NotFoundException('Patient profile not found');
     }
 
-    const result = await this.notificationRepo.delete({ patientId: patient.id });
+    const result = await this.notificationRepo.delete({
+      patientId: patient.id,
+    });
 
     return { deletedCount: result.affected || 0 };
   }

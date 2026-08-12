@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  OneToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { RecurringAvailability } from './recurring-availability.entity';
 import { CustomAvailability } from './custom-availability.entity';
 import { User } from '../../users/entities/user.entity';
@@ -24,7 +32,12 @@ export class DoctorProfile {
   @Column()
   qualification: string;
 
-  @Column({ name: 'consultation_fee', type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'consultation_fee',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+  })
   consultationFee: number;
 
   @Column()

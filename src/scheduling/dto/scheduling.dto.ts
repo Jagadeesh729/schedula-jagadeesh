@@ -57,7 +57,10 @@ export class CreateAppointmentDto {
 
   @IsNotEmpty()
   @IsString()
-  @IsDateString({}, { message: 'date must be a valid calendar date in YYYY-MM-DD format' })
+  @IsDateString(
+    {},
+    { message: 'date must be a valid calendar date in YYYY-MM-DD format' },
+  )
   date!: string;
 
   @IsOptional()
@@ -96,7 +99,10 @@ export class CreateAppointmentDto {
 export class RescheduleAppointmentDto {
   @IsNotEmpty()
   @IsString()
-  @IsDateString({}, { message: 'date must be a valid calendar date in YYYY-MM-DD format' })
+  @IsDateString(
+    {},
+    { message: 'date must be a valid calendar date in YYYY-MM-DD format' },
+  )
   date!: string;
 
   @IsOptional()
@@ -126,4 +132,3 @@ export class RescheduleAppointmentDto {
   @IsString()
   window?: string;
 }
-

@@ -11,6 +11,7 @@ import { CustomAvailability } from '../../doctor/entities/custom-availability.en
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { CreateNotificationDto } from '../../notification/dto/notification.dto';
 import { EntityManager } from 'typeorm';
 
 interface ExposedAppointmentService {
@@ -143,7 +144,11 @@ describe('AppointmentService Unit Tests', () => {
   });
 
   it('should reject impossible calendar dates at the service boundary', () => {
-    expect(() => (service as unknown as ExposedAppointmentService).validateCalendarDate('2026-13-45')).toThrow();
+    expect(() =>
+      (service as unknown as ExposedAppointmentService).validateCalendarDate(
+        '2026-13-45',
+      ),
+    ).toThrow();
   });
 
   // ─── Notification Trigger Unit Tests ──────────────────────────────────────
@@ -153,7 +158,9 @@ describe('AppointmentService Unit Tests', () => {
       const patientId = 'patient-uuid-1';
       const appointmentId = 'appt-uuid-1';
 
-      await (service as unknown as ExposedAppointmentService).triggerNotification(
+      await (
+        service as unknown as ExposedAppointmentService
+      ).triggerNotification(
         patientId,
         NotificationType.APPOINTMENT_BOOKED,
         appointmentId,
@@ -163,8 +170,11 @@ describe('AppointmentService Unit Tests', () => {
         undefined, // manager
       );
 
-      expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(1);
-      const call = mockNotificationService.createNotification.mock.calls[0][0];
+      expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(
+        1,
+      );
+      const call = mockNotificationService.createNotification.mock
+        .calls[0][0] as CreateNotificationDto;
       expect(call.patientId).toBe(patientId);
       expect(call.type).toBe(NotificationType.APPOINTMENT_BOOKED);
       expect(call.appointmentId).toBe(appointmentId);
@@ -179,7 +189,9 @@ describe('AppointmentService Unit Tests', () => {
       const patientId = 'patient-uuid-2';
       const appointmentId = 'appt-uuid-2';
 
-      await (service as unknown as ExposedAppointmentService).triggerNotification(
+      await (
+        service as unknown as ExposedAppointmentService
+      ).triggerNotification(
         patientId,
         NotificationType.APPOINTMENT_CANCELLED,
         appointmentId,
@@ -189,8 +201,11 @@ describe('AppointmentService Unit Tests', () => {
         undefined, // manager
       );
 
-      expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(1);
-      const call = mockNotificationService.createNotification.mock.calls[0][0];
+      expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(
+        1,
+      );
+      const call = mockNotificationService.createNotification.mock
+        .calls[0][0] as CreateNotificationDto;
       expect(call.type).toBe(NotificationType.APPOINTMENT_CANCELLED);
       expect(call.eventId).toBe(`APPOINTMENT_CANCELLED_${appointmentId}`);
       expect(call.title).toBe('Appointment Cancelled');
@@ -202,7 +217,9 @@ describe('AppointmentService Unit Tests', () => {
       const patientId = 'patient-uuid-3';
       const appointmentId = 'appt-uuid-3';
 
-      await (service as unknown as ExposedAppointmentService).triggerNotification(
+      await (
+        service as unknown as ExposedAppointmentService
+      ).triggerNotification(
         patientId,
         NotificationType.APPOINTMENT_RESCHEDULED,
         appointmentId,
@@ -212,8 +229,11 @@ describe('AppointmentService Unit Tests', () => {
         undefined, // manager
       );
 
-      expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(1);
-      const call = mockNotificationService.createNotification.mock.calls[0][0];
+      expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(
+        1,
+      );
+      const call = mockNotificationService.createNotification.mock
+        .calls[0][0] as CreateNotificationDto;
       expect(call.type).toBe(NotificationType.APPOINTMENT_RESCHEDULED);
       expect(call.eventId).toBe(`APPOINTMENT_RESCHEDULED_${appointmentId}`);
       expect(call.title).toBe('Appointment Rescheduled');
@@ -222,7 +242,9 @@ describe('AppointmentService Unit Tests', () => {
     });
 
     it('should use customEventKey as eventId when provided', async () => {
-      await (service as unknown as ExposedAppointmentService).triggerNotification(
+      await (
+        service as unknown as ExposedAppointmentService
+      ).triggerNotification(
         'patient-uuid-4',
         NotificationType.APPOINTMENT_RESCHEDULED,
         'appt-uuid-4',
@@ -233,7 +255,8 @@ describe('AppointmentService Unit Tests', () => {
         'ELASTIC_SHRINK_appt-uuid-4', // customEventKey
       );
 
-      const call = mockNotificationService.createNotification.mock.calls[0][0];
+      const call = mockNotificationService.createNotification.mock
+        .calls[0][0] as CreateNotificationDto;
       expect(call.eventId).toBe('ELASTIC_SHRINK_appt-uuid-4');
     });
 
@@ -260,7 +283,9 @@ describe('AppointmentService Unit Tests', () => {
       // triggerNotification is only called when patientId is truthy (guarded at call-site)
       // If called directly with empty string, it should still attempt but guard is at call-site
       // This test verifies that a null/undefined patientId would not silently produce bad data
-      await (service as unknown as ExposedAppointmentService).triggerNotification(
+      await (
+        service as unknown as ExposedAppointmentService
+      ).triggerNotification(
         '',
         NotificationType.APPOINTMENT_BOOKED,
         'appt-uuid-6',
@@ -273,7 +298,8 @@ describe('AppointmentService Unit Tests', () => {
       // createNotification is still called — the guard is upstream (patientId truthy check)
       // Verify that if it is called, the DTO contains the empty string (not undefined)
       // This documents that the caller is responsible for the guard
-      const call = mockNotificationService.createNotification.mock.calls[0]?.[0];
+      const call = mockNotificationService.createNotification.mock
+        .calls[0]?.[0] as CreateNotificationDto | undefined;
       if (call) {
         expect(typeof call.patientId).toBe('string');
       }

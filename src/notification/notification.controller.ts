@@ -36,7 +36,12 @@ export class NotificationController {
     return this.notificationService.markAllAsRead(req.user.id);
   }
 
-  @Patch(['notifications/:id/read', 'notifications/:id', 'notification/:id/read', 'notification/:id'])
+  @Patch([
+    'notifications/:id/read',
+    'notifications/:id',
+    'notification/:id/read',
+    'notification/:id',
+  ])
   async markAsRead(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: RequestWithUser,
@@ -57,4 +62,3 @@ export class NotificationController {
     return this.notificationService.deleteNotification(id, req.user.id);
   }
 }
-

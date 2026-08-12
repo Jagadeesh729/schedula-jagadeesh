@@ -9,7 +9,7 @@ const makeMockDataSource = (overrides: Partial<DataSource> = {}) =>
     isInitialized: true,
     query: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
     ...overrides,
-  } as unknown as DataSource);
+  }) as unknown as DataSource;
 
 describe('AppController', () => {
   let appController: AppController;
@@ -52,7 +52,10 @@ describe('AppController', () => {
         controllers: [AppController],
         providers: [
           AppService,
-          { provide: DataSource, useValue: makeMockDataSource({ isInitialized: false }) },
+          {
+            provide: DataSource,
+            useValue: makeMockDataSource({ isInitialized: false }),
+          },
         ],
       }).compile();
       const uninitCtrl = uninitModule.get<AppController>(AppController);
@@ -62,7 +65,9 @@ describe('AppController', () => {
     });
 
     it('should throw ServiceUnavailableException when DB query fails', async () => {
-      mockDataSource.query = jest.fn().mockRejectedValue(new Error('Connection refused'));
+      mockDataSource.query = jest
+        .fn()
+        .mockRejectedValue(new Error('Connection refused'));
       await expect(appController.getHealth()).rejects.toThrow(
         ServiceUnavailableException,
       );
@@ -81,7 +86,10 @@ describe('AppController', () => {
         controllers: [AppController],
         providers: [
           AppService,
-          { provide: DataSource, useValue: makeMockDataSource({ isInitialized: false }) },
+          {
+            provide: DataSource,
+            useValue: makeMockDataSource({ isInitialized: false }),
+          },
         ],
       }).compile();
       const uninitCtrl = uninitModule.get<AppController>(AppController);
@@ -91,7 +99,9 @@ describe('AppController', () => {
     });
 
     it('should throw ServiceUnavailableException when DB query fails', async () => {
-      mockDataSource.query = jest.fn().mockRejectedValue(new Error('Query failed'));
+      mockDataSource.query = jest
+        .fn()
+        .mockRejectedValue(new Error('Query failed'));
       await expect(appController.getReadiness()).rejects.toThrow(
         ServiceUnavailableException,
       );

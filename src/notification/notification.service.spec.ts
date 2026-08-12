@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
-import {
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { Notification } from './entities/notification.entity';
 import { PatientProfile } from '../patient/entities/patient-profile.entity';
@@ -22,7 +19,7 @@ const makeNotif = (overrides: Partial<Notification> = {}): Notification =>
     isRead: false,
     createdAt: new Date('2026-06-25T10:00:00Z'),
     ...overrides,
-  } as Notification);
+  }) as Notification;
 
 describe('NotificationService', () => {
   let service: NotificationService;
@@ -193,8 +190,16 @@ describe('NotificationService', () => {
     it('should return notifications ordered by createdAt DESC for valid patient, along with counts', async () => {
       const patient = { id: 'patient-uuid-1' } as PatientProfile;
       const notifications = [
-        makeNotif({ id: 'notif-2', createdAt: new Date('2026-06-26T10:00:00Z'), isRead: false }),
-        makeNotif({ id: 'notif-1', createdAt: new Date('2026-06-25T10:00:00Z'), isRead: true }),
+        makeNotif({
+          id: 'notif-2',
+          createdAt: new Date('2026-06-26T10:00:00Z'),
+          isRead: false,
+        }),
+        makeNotif({
+          id: 'notif-1',
+          createdAt: new Date('2026-06-25T10:00:00Z'),
+          isRead: true,
+        }),
       ];
       patientRepo.findOne.mockResolvedValue(patient);
       notifRepo.findAndCount.mockResolvedValue([notifications, 2]);
@@ -339,9 +344,11 @@ describe('NotificationService', () => {
       expect(notifRepo.remove).toHaveBeenCalledWith(notification);
     });
 
-    it('should throw ForbiddenException if deleting another patient\'s notification', async () => {
+    it("should throw ForbiddenException if deleting another patient's notification", async () => {
       patientRepo.findOne.mockResolvedValue({ id: 'patient-uuid-ATTACKER' });
-      notifRepo.findOne.mockResolvedValue(makeNotif({ patientId: 'patient-uuid-VICTIM' }));
+      notifRepo.findOne.mockResolvedValue(
+        makeNotif({ patientId: 'patient-uuid-VICTIM' }),
+      );
 
       await expect(
         service.deleteNotification('notif-uuid-1', 'user-uuid-1'),
@@ -358,7 +365,9 @@ describe('NotificationService', () => {
 
       const result = await service.deleteAllNotifications('user-uuid-1');
 
-      expect(notifRepo.delete).toHaveBeenCalledWith({ patientId: 'patient-uuid-1' });
+      expect(notifRepo.delete).toHaveBeenCalledWith({
+        patientId: 'patient-uuid-1',
+      });
       expect(result).toEqual({ deletedCount: 5 });
     });
   });
@@ -399,8 +408,12 @@ describe('NotificationService', () => {
   describe('NotificationType enum', () => {
     it('should contain all three required event types', () => {
       expect(NotificationType.APPOINTMENT_BOOKED).toBe('APPOINTMENT_BOOKED');
-      expect(NotificationType.APPOINTMENT_CANCELLED).toBe('APPOINTMENT_CANCELLED');
-      expect(NotificationType.APPOINTMENT_RESCHEDULED).toBe('APPOINTMENT_RESCHEDULED');
+      expect(NotificationType.APPOINTMENT_CANCELLED).toBe(
+        'APPOINTMENT_CANCELLED',
+      );
+      expect(NotificationType.APPOINTMENT_RESCHEDULED).toBe(
+        'APPOINTMENT_RESCHEDULED',
+      );
     });
   });
 });
