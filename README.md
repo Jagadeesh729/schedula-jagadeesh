@@ -57,6 +57,7 @@ Schedula is built following a clean **4-Tier NestJS Architecture** (Controller $
 │  - DoctorAvailabilityCtrl  (/doctor/availability, /doctor/availability/:id)│
 │  - DoctorsSchedulingCtrl   (/doctors/:doctorId/scheduling)             │
 │  - AppointmentController   (/appointment/book, /appointment/reschedule)│
+│  - NotificationController  (/notifications, /notifications/:id/read)  │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -261,7 +262,7 @@ WHERE event_id IS NOT NULL;
 
 ---
 
-## 📑 Complete API Endpoint Table (22 Endpoints)
+## 📑 Complete API Endpoint Table (27 Endpoints)
 
 | Method | Path Alias 1 | Path Alias 2 | Auth Required | Description |
 | :--- | :--- | :--- | :---: | :--- |
