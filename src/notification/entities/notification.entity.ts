@@ -35,7 +35,8 @@ export class Notification {
   @Column({ name: 'appointment_id', type: 'uuid', nullable: true })
   appointmentId?: string;
 
-  @Column({ name: 'event_id', type: 'varchar', length: 255, nullable: true, unique: true })
+  @Index('idx_notification_event_unique', { unique: true, where: '"event_id" IS NOT NULL' })
+  @Column({ name: 'event_id', type: 'varchar', length: 255, nullable: true })
   eventId?: string;
 
   @Column({ name: 'is_read', type: 'boolean', default: false })

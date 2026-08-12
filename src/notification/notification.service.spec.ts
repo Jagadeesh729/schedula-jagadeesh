@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EntityManager } from 'typeorm';
 import {
   ForbiddenException,
   NotFoundException,
@@ -176,7 +177,7 @@ describe('NotificationService', () => {
           message: 'Transactional path.',
           eventId: 'APPOINTMENT_BOOKED_appt-uuid-1',
         },
-        mockManager as any,
+        mockManager as unknown as EntityManager,
       );
 
       expect(mockManager.getRepository).toHaveBeenCalledWith(Notification);

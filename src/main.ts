@@ -10,7 +10,9 @@ async function bootstrap() {
       process.env.JWT_SECRET === 'supersecretkey' ||
       process.env.JWT_SECRET === 'super_secret_key_for_jwt')
   ) {
-    console.error('FATAL: Production JWT_SECRET environment variable is unset or insecure.');
+    import('@nestjs/common').then(({ Logger }) => {
+      Logger.error('FATAL: Production JWT_SECRET environment variable is unset or insecure.');
+    });
     process.exit(1);
   }
 

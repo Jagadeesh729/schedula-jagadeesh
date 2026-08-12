@@ -132,8 +132,9 @@ export class RateLimiterGuard implements CanActivate {
         return true;
       } catch (err) {
         if (err instanceof HttpException) throw err;
+        const errorMessage = err instanceof Error ? err.message : String(err);
         this.logger.warn(
-          `Redis command failed, falling back to in-memory mode: ${(err as any).message}`,
+          `Redis command failed, falling back to in-memory mode: ${errorMessage}`,
         );
       }
     }

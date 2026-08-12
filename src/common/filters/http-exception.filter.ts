@@ -31,9 +31,12 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
     } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-      const resObj = exceptionResponse as Record<string, any>;
-      message = resObj.message || message;
-      errorType = resObj.error || (exception as any)?.constructor?.name || 'HttpException';
+      const resObj = exceptionResponse as Record<string, unknown>;
+      message = (resObj.message as string | string[]) || message;
+      const ctorName = exception && typeof exception === 'object' && 'constructor' in exception
+        ? (exception.constructor as { name?: string }).name
+        : undefined;
+      errorType = (resObj.error as string) || ctorName || 'HttpException';
     } else if (exception instanceof Error) {
       message = exception.message;
       errorType = exception.name;
@@ -56,7 +59,7 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     // Collect any extra fields from the exception response (e.g. suggestedNextAvailable)
     let extraFields: Record<string, unknown> = {};
     if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-      const resObj = exceptionResponse as Record<string, any>;
+      const resObj = exceptionResponse as Record<string, unknown>;
       const { message: _m, error: _e, statusCode: _s, ...rest } = resObj;
       extraFields = rest;
     }

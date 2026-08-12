@@ -95,7 +95,7 @@ async function runNotificationWorkflowSuite() {
     experience: 10,
     qualification: 'MBBS, MD (Cardiology)',
     consultationFee: 500,
-    availability: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    availability: 'Monday,Tuesday,Wednesday,Thursday,Friday',
     profileDetails: 'Experienced cardiologist with 10 years of practice.',
   }, docToken);
 

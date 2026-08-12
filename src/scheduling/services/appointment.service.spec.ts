@@ -11,6 +11,21 @@ import { CustomAvailability } from '../../doctor/entities/custom-availability.en
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../notification/enums/notification-type.enum';
+import { EntityManager } from 'typeorm';
+
+interface ExposedAppointmentService {
+  validateCalendarDate(date: string): void;
+  triggerNotification(
+    patientId: string,
+    type: NotificationType,
+    appointmentId: string,
+    doctorName: string,
+    date: string,
+    time: string,
+    manager?: EntityManager,
+    customEventKey?: string,
+  ): Promise<void>;
+}
 
 /** Shared mock for NotificationService — tests can override per-test via jest.spyOn */
 const mockNotificationService = {
@@ -128,7 +143,7 @@ describe('AppointmentService Unit Tests', () => {
   });
 
   it('should reject impossible calendar dates at the service boundary', () => {
-    expect(() => (service as any).validateCalendarDate('2026-13-45')).toThrow();
+    expect(() => (service as unknown as ExposedAppointmentService).validateCalendarDate('2026-13-45')).toThrow();
   });
 
   // ─── Notification Trigger Unit Tests ──────────────────────────────────────
@@ -138,7 +153,7 @@ describe('AppointmentService Unit Tests', () => {
       const patientId = 'patient-uuid-1';
       const appointmentId = 'appt-uuid-1';
 
-      await (service as any).triggerNotification(
+      await (service as unknown as ExposedAppointmentService).triggerNotification(
         patientId,
         NotificationType.APPOINTMENT_BOOKED,
         appointmentId,
@@ -164,7 +179,7 @@ describe('AppointmentService Unit Tests', () => {
       const patientId = 'patient-uuid-2';
       const appointmentId = 'appt-uuid-2';
 
-      await (service as any).triggerNotification(
+      await (service as unknown as ExposedAppointmentService).triggerNotification(
         patientId,
         NotificationType.APPOINTMENT_CANCELLED,
         appointmentId,
@@ -187,7 +202,7 @@ describe('AppointmentService Unit Tests', () => {
       const patientId = 'patient-uuid-3';
       const appointmentId = 'appt-uuid-3';
 
-      await (service as any).triggerNotification(
+      await (service as unknown as ExposedAppointmentService).triggerNotification(
         patientId,
         NotificationType.APPOINTMENT_RESCHEDULED,
         appointmentId,
@@ -207,7 +222,7 @@ describe('AppointmentService Unit Tests', () => {
     });
 
     it('should use customEventKey as eventId when provided', async () => {
-      await (service as any).triggerNotification(
+      await (service as unknown as ExposedAppointmentService).triggerNotification(
         'patient-uuid-4',
         NotificationType.APPOINTMENT_RESCHEDULED,
         'appt-uuid-4',
@@ -229,7 +244,7 @@ describe('AppointmentService Unit Tests', () => {
 
       // Must not throw — notification errors are swallowed intentionally
       await expect(
-        (service as any).triggerNotification(
+        (service as unknown as ExposedAppointmentService).triggerNotification(
           'patient-uuid-5',
           NotificationType.APPOINTMENT_BOOKED,
           'appt-uuid-5',
@@ -245,7 +260,7 @@ describe('AppointmentService Unit Tests', () => {
       // triggerNotification is only called when patientId is truthy (guarded at call-site)
       // If called directly with empty string, it should still attempt but guard is at call-site
       // This test verifies that a null/undefined patientId would not silently produce bad data
-      await (service as any).triggerNotification(
+      await (service as unknown as ExposedAppointmentService).triggerNotification(
         '',
         NotificationType.APPOINTMENT_BOOKED,
         'appt-uuid-6',

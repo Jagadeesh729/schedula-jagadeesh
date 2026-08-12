@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository, QueryFailedError } from 'typeorm';
 import { Appointment } from '../entities/appointment.entity';
 import { SchedulingConfig } from '../entities/scheduling-config.entity';
 import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
@@ -442,7 +442,15 @@ export class AppointmentService {
         status: AppointmentStatus.CONFIRMED,
       });
 
-      const saved = await this.appointmentRepo.save(appointment);
+      let saved: Appointment;
+      try {
+        saved = await this.appointmentRepo.save(appointment);
+      } catch (error: unknown) {
+        if (hasErrorCode(error) && error.code === '23505') {
+          throw new ConflictException('Slot already booked due to concurrent request');
+        }
+        throw error;
+      }
       const doctorName = doctor.fullName || doctor.user?.name || '';
       const timeStr = saved.slotStartTime || saved.window || '';
       if (saved.patientId) {

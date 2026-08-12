@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { DoctorProfile } from '../../doctor/entities/doctor-profile.entity';
 import { PatientProfile } from '../../patient/entities/patient-profile.entity';
@@ -13,6 +14,18 @@ import { SchedulingType } from '../enums/scheduling-type.enum';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 
 @Entity('appointments')
+@Index('idx_stream_slot_unique', ['doctorId', 'date', 'slotStartTime'], {
+  unique: true,
+  where: "status = 'CONFIRMED' AND slot_start_time IS NOT NULL",
+})
+@Index('idx_wave_window_patient_unique', ['doctorId', 'date', 'window', 'patientId'], {
+  unique: true,
+  where: "status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL",
+})
+@Index('idx_wave_window_token_unique', ['doctorId', 'date', 'window', 'token'], {
+  unique: true,
+  where: "status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL",
+})
 export class Appointment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
