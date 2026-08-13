@@ -93,4 +93,34 @@ export class AppController {
       timestamp: new Date().toISOString(),
     };
   }
+
+  @Get('/metrics')
+  async getMetrics(): Promise<string> {
+    const memory = process.memoryUsage();
+    const uptime = process.uptime();
+    let dbStatusMetric = 0;
+    try {
+      if (this.dataSource && this.dataSource.isInitialized) {
+        await this.dataSource.query('SELECT 1');
+        dbStatusMetric = 1;
+      }
+    } catch {}
+
+    const lines = [
+      '# HELP process_uptime_seconds Process uptime in seconds.',
+      '# TYPE process_uptime_seconds gauge',
+      `process_uptime_seconds ${uptime}`,
+      '# HELP process_resident_memory_bytes Resident memory size in bytes.',
+      '# TYPE process_resident_memory_bytes gauge',
+      `process_resident_memory_bytes ${memory.rss}`,
+      '# HELP process_heap_bytes Process heap memory usage in bytes.',
+      '# TYPE process_heap_bytes gauge',
+      `process_heap_bytes ${memory.heapUsed}`,
+      '# HELP database_up Database connection status (1 = connected, 0 = disconnected).',
+      '# TYPE database_up gauge',
+      `database_up ${dbStatusMetric}`,
+    ];
+
+    return lines.join('\n') + '\n';
+  }
 }
