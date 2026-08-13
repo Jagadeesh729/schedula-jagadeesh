@@ -262,7 +262,7 @@ WHERE event_id IS NOT NULL;
 
 ---
 
-## 📑 Complete API Endpoint Table (27 Endpoints)
+## 📑 Complete API Endpoint Table (33 Endpoints)
 
 | Method | Path Alias 1 | Path Alias 2 | Auth Required | Description |
 | :--- | :--- | :--- | :---: | :--- |
@@ -270,8 +270,10 @@ WHERE event_id IS NOT NULL;
 | `POST` | `/auth/login` | — | No | Authenticate user & receive JWT Bearer token |
 | `POST` | `/doctor/profile` | — | Yes (`DOCTOR`) | Create or update Doctor profile |
 | `GET` | `/doctor/profile` | — | Yes (`DOCTOR`) | Get authenticated Doctor profile |
+| `PATCH`| `/doctor/profile` | — | Yes (`DOCTOR`) | Update authenticated Doctor profile |
 | `POST` | `/patient/profile` | — | Yes (`PATIENT`) | Create or update Patient profile |
 | `GET` | `/patient/profile` | — | Yes (`PATIENT`) | Get authenticated Patient profile |
+| `PATCH`| `/patient/profile` | — | Yes (`PATIENT`) | Update authenticated Patient profile |
 | `POST` | `/doctor/availability` | — | Yes (`DOCTOR`) | Create recurring weekly availability slot |
 | `GET` | `/doctor/availability` | — | Yes (`DOCTOR`) | List recurring availability slots |
 | `PATCH`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Update availability (Elastic Shrink/Expand Engine) |
@@ -287,12 +289,16 @@ WHERE event_id IS NOT NULL;
 | `PATCH`| `/appointment/:id/cancel` | `/appointments/:id/cancel` | Yes (`PATIENT`) | Cancel appointment with IDOR check |
 | `PATCH`| `/appointment/:id/reschedule` | `/appointments/:id/reschedule` | Yes (`PATIENT`) | Reschedule appointment (30-min cutoff) |
 | `GET` | `/doctor/appointments` | — | Yes (`DOCTOR`) | List doctor's appointments by date range |
-| `GET` | `/doctor/appointments/today` | — | Yes (`DOCTOR`) | Get doctor's appointments scheduled for today |
 | `GET` | `/notifications` | `/notification` | Yes (`PATIENT`) | Get patient's notifications (latest first) |
 | `PATCH`| `/notifications/:id/read` | `/notification/:id/read` | Yes (`PATIENT`) | Mark notification as read |
 | `PATCH`| `/notifications/read-all` | `/notification/read-all` | Yes (`PATIENT`) | Mark all unread notifications as read |
 | `DELETE`| `/notifications/:id` | `/notification/:id` | Yes (`PATIENT`) | Delete a specific notification |
 | `DELETE`| `/notifications` | `/notification` | Yes (`PATIENT`) | Delete all notifications for the patient |
+| `GET` | `/health` | — | No | Comprehensive service & database latency health check |
+| `GET` | `/readiness` | — | No | Kubernetes readiness probe |
+| `GET` | `/liveness` | — | No | Kubernetes liveness probe |
+| `GET` | `/metrics` | — | No | Prometheus telemetry metrics endpoint |
+| `GET` | `/api-docs` | — | No | Interactive OpenAPI / Swagger UI documentation |
 
 ---
 
