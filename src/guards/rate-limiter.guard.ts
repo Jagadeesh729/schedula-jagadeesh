@@ -38,34 +38,28 @@ export class RateLimiterGuard implements CanActivate {
   private redisClient: any = null;
   private isRedisConnected = false;
 
-  /** Periodic eviction interval reference for cleanup */
-  private evictionInterval: ReturnType<typeof setInterval> | null = null;
+  private evictionInterval: NodeJS.Timeout;
 
   constructor() {
     this.initRedisIfConfigured();
-    this.startEvictionTimer();
-  }
-
-  /**
-   * Periodically evict stale in-memory entries to prevent unbounded Map growth.
-   * Runs every 5 minutes; removes entries not seen in the last 2x window duration.
-   */
-  private startEvictionTimer(): void {
+    // Schedule periodic eviction of stale records every 2 minutes
     this.evictionInterval = setInterval(
-      () => {
-        const staleThreshold = Date.now() - this.WINDOW_MS * 2;
-        for (const [ip, record] of this.clients) {
-          if (record.lastSeen < staleThreshold) {
-            this.clients.delete(ip);
-          }
-        }
-      },
-      5 * 60 * 1000,
-    ); // every 5 minutes
+      () => this.evictStaleClients(),
+      2 * 60 * 1000,
+    );
 
     // Unref so the timer doesn't prevent process exit in tests
     if (this.evictionInterval.unref) {
       this.evictionInterval.unref();
+    }
+  }
+
+  private evictStaleClients(): void {
+    const staleThreshold = Date.now() - this.WINDOW_MS * 2;
+    for (const [ip, record] of this.clients) {
+      if (record.lastSeen < staleThreshold) {
+        this.clients.delete(ip);
+      }
     }
   }
 
@@ -74,24 +68,27 @@ export class RateLimiterGuard implements CanActivate {
     if (redisUrl) {
       try {
         // Dynamic require of ioredis if installed; falls back gracefully if not present
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
         const Redis = require('ioredis');
         this.redisClient = new Redis(redisUrl, {
           enableOfflineQueue: false,
           maxRetriesPerRequest: 1,
         });
-        this.redisClient.on('connect', () => {
-          this.isRedisConnected = true;
-          this.logger.log(
-            'Distributed Redis Rate Limiter initialized successfully.',
-          );
-        });
-        this.redisClient.on('error', (err: any) => {
-          this.isRedisConnected = false;
-          this.logger.warn(
-            `Redis connection error, falling back to in-memory limiter: ${err.message}`,
-          );
-        });
+        if (this.redisClient) {
+          this.redisClient.on('connect', () => {
+            this.isRedisConnected = true;
+            this.logger.log(
+              'Distributed Redis Rate Limiter initialized successfully.',
+            );
+          });
+          this.redisClient.on('error', (err: { message?: string }) => {
+            this.isRedisConnected = false;
+            this.logger.warn(
+              `Redis connection error, falling back to in-memory limiter: ${err?.message || 'unknown error'}`,
+            );
+          });
+        }
+        /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
       } catch {
         this.logger.log(
           'Redis package not found or unconfigured. Operating in single-instance in-memory rate limiting mode.',
@@ -124,10 +121,12 @@ export class RateLimiterGuard implements CanActivate {
     if (this.isRedisConnected && this.redisClient) {
       try {
         const key = `ratelimit:${isAuthRoute ? 'auth' : 'global'}:${clientIp}`;
-        const currentRequests = await this.redisClient.incr(key);
+        /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+        const currentRequests = Number(await this.redisClient.incr(key));
         if (currentRequests === 1) {
           await this.redisClient.expire(key, 60);
         }
+        /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
         if (currentRequests > maxLimit) {
           throw new HttpException(
             'Too Many Requests - Distributed Rate limit exceeded',
@@ -170,8 +169,8 @@ export class RateLimiterGuard implements CanActivate {
     // If the Map has grown beyond the cap, evict the oldest-seen entry to prevent
     // unbounded memory growth (e.g. from IP spoofing or a large unique-IP burst).
     if (this.clients.size >= this.MAX_CLIENTS && !this.clients.has(clientIp)) {
-      const oldestKey = this.clients.keys().next().value;
-      if (oldestKey !== undefined) {
+      const oldestKey = Array.from(this.clients.keys())[0];
+      if (oldestKey) {
         this.clients.delete(oldestKey);
       }
     }

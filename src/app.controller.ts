@@ -104,7 +104,9 @@ export class AppController {
         await this.dataSource.query('SELECT 1');
         dbStatusMetric = 1;
       }
-    } catch {}
+    } catch {
+      dbStatusMetric = 0;
+    }
 
     const lines = [
       '# HELP process_uptime_seconds Process uptime in seconds.',

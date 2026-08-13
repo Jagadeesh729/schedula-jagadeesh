@@ -52,7 +52,9 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       request.correlationId || request.headers['x-request-id'] || 'N/A';
     const duration = request.startTime ? Date.now() - request.startTime : 0;
 
-    const formattedMsg = Array.isArray(message) ? message.join(', ') : String(message);
+    const formattedMsg = Array.isArray(message)
+      ? message.join(', ')
+      : String(message);
 
     if (status >= 500) {
       this.logger.error(

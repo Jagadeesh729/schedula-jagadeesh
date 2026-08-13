@@ -1,7 +1,6 @@
 import {
   WebSocketGateway,
   WebSocketServer,
-  SubscribeMessage,
   MessageBody,
   ConnectedSocket,
   OnGatewayConnection,
@@ -83,7 +82,8 @@ export class NotificationGateway
 
         if (
           !patientProfile ||
-          (patientProfile.user && patientProfile.user.id !== authenticatedUserId)
+          (patientProfile.user &&
+            patientProfile.user.id !== authenticatedUserId)
         ) {
           this.logger.warn(
             `Unauthorized WebSocket subscription attempt: User ${authenticatedUserId} tried to subscribe to patient ${data.patientId}`,
@@ -102,11 +102,17 @@ export class NotificationGateway
       );
       return { status: 'subscribed', room: `patient_${data.patientId}` };
     } catch {
-      return { status: 'error', message: 'Unauthorized: Invalid or expired JWT token' };
+      return {
+        status: 'error',
+        message: 'Unauthorized: Invalid or expired JWT token',
+      };
     }
   }
 
-  notifyPatient(patientId: string, notificationPayload: Record<string, unknown>) {
+  notifyPatient(
+    patientId: string,
+    notificationPayload: Record<string, unknown>,
+  ) {
     if (this.server) {
       this.server
         .to(`patient_${patientId}`)

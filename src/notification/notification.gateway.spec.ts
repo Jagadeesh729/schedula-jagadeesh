@@ -7,7 +7,6 @@ import { Socket } from 'socket.io';
 
 describe('NotificationGateway', () => {
   let gateway: NotificationGateway;
-  let jwtService: JwtService;
 
   const mockJwtService = {
     verify: jest.fn(),
@@ -30,7 +29,6 @@ describe('NotificationGateway', () => {
     }).compile();
 
     gateway = module.get<NotificationGateway>(NotificationGateway);
-    jwtService = module.get<JwtService>(JwtService);
     jest.clearAllMocks();
   });
 
@@ -52,10 +50,11 @@ describe('NotificationGateway', () => {
   });
 
   it('should reject IDOR attempt when Patient A tries to subscribe to Patient B room', async () => {
+    const mockJoin = jest.fn();
     const mockSocket = {
       id: 'socket-1',
       handshake: { auth: { token: 'valid-patient-a-jwt' }, headers: {} },
-      join: jest.fn(),
+      join: mockJoin,
     } as unknown as Socket;
 
     mockJwtService.verify.mockReturnValue({
@@ -79,14 +78,15 @@ describe('NotificationGateway', () => {
       message:
         'Unauthorized: Cannot subscribe to another patient notification channel',
     });
-    expect(mockSocket.join).not.toHaveBeenCalled();
+    expect(mockJoin).not.toHaveBeenCalled();
   });
 
   it('should allow subscription when Patient A subscribes to Patient A room', async () => {
+    const mockJoin = jest.fn().mockResolvedValue(undefined);
     const mockSocket = {
       id: 'socket-1',
       handshake: { auth: { token: 'valid-patient-a-jwt' }, headers: {} },
-      join: jest.fn().mockResolvedValue(undefined),
+      join: mockJoin,
     } as unknown as Socket;
 
     mockJwtService.verify.mockReturnValue({
@@ -108,6 +108,6 @@ describe('NotificationGateway', () => {
       status: 'subscribed',
       room: 'patient_patient-uuid-a',
     });
-    expect(mockSocket.join).toHaveBeenCalledWith('patient_patient-uuid-a');
+    expect(mockJoin).toHaveBeenCalledWith('patient_patient-uuid-a');
   });
 });

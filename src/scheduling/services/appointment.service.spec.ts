@@ -30,7 +30,10 @@ interface ExposedAppointmentService {
 
 /** Shared mock for NotificationService — tests can override per-test via jest.spyOn */
 const mockNotificationService = {
-  createNotification: jest.fn().mockResolvedValue({ id: 'notif-uuid-1' }),
+  createNotification: jest.fn() as jest.Mock<
+    Promise<{ id: string }>,
+    [CreateNotificationDto, EntityManager?]
+  >,
   getPatientNotifications: jest.fn().mockResolvedValue([]),
   markAsRead: jest.fn().mockResolvedValue({}),
 };
@@ -173,16 +176,19 @@ describe('AppointmentService Unit Tests', () => {
       expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(
         1,
       );
-      const call = mockNotificationService.createNotification.mock
-        .calls[0][0] as CreateNotificationDto;
-      expect(call.patientId).toBe(patientId);
-      expect(call.type).toBe(NotificationType.APPOINTMENT_BOOKED);
-      expect(call.appointmentId).toBe(appointmentId);
-      expect(call.eventId).toBe(`APPOINTMENT_BOOKED_${appointmentId}`);
-      expect(call.title).toBe('Appointment Booked');
-      expect(call.message).toContain('Dr. Smith');
-      expect(call.message).toContain('2026-06-25');
-      expect(call.message).toContain('10:00');
+      const call =
+        mockNotificationService.createNotification.mock.calls[0]?.[0];
+      expect(call).toBeDefined();
+      if (call) {
+        expect(call.patientId).toBe(patientId);
+        expect(call.type).toBe(NotificationType.APPOINTMENT_BOOKED);
+        expect(call.appointmentId).toBe(appointmentId);
+        expect(call.eventId).toBe(`APPOINTMENT_BOOKED_${appointmentId}`);
+        expect(call.title).toBe('Appointment Booked');
+        expect(call.message).toContain('Dr. Smith');
+        expect(call.message).toContain('2026-06-25');
+        expect(call.message).toContain('10:00');
+      }
     });
 
     it('should call createNotification with APPOINTMENT_CANCELLED type', async () => {
@@ -204,13 +210,16 @@ describe('AppointmentService Unit Tests', () => {
       expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(
         1,
       );
-      const call = mockNotificationService.createNotification.mock
-        .calls[0][0] as CreateNotificationDto;
-      expect(call.type).toBe(NotificationType.APPOINTMENT_CANCELLED);
-      expect(call.eventId).toBe(`APPOINTMENT_CANCELLED_${appointmentId}`);
-      expect(call.title).toBe('Appointment Cancelled');
-      expect(call.message).toContain('2026-06-25');
-      expect(call.message).toContain('10:00');
+      const call =
+        mockNotificationService.createNotification.mock.calls[0]?.[0];
+      expect(call).toBeDefined();
+      if (call) {
+        expect(call.type).toBe(NotificationType.APPOINTMENT_CANCELLED);
+        expect(call.eventId).toBe(`APPOINTMENT_CANCELLED_${appointmentId}`);
+        expect(call.title).toBe('Appointment Cancelled');
+        expect(call.message).toContain('2026-06-25');
+        expect(call.message).toContain('10:00');
+      }
     });
 
     it('should call createNotification with APPOINTMENT_RESCHEDULED type', async () => {
@@ -232,13 +241,16 @@ describe('AppointmentService Unit Tests', () => {
       expect(mockNotificationService.createNotification).toHaveBeenCalledTimes(
         1,
       );
-      const call = mockNotificationService.createNotification.mock
-        .calls[0][0] as CreateNotificationDto;
-      expect(call.type).toBe(NotificationType.APPOINTMENT_RESCHEDULED);
-      expect(call.eventId).toBe(`APPOINTMENT_RESCHEDULED_${appointmentId}`);
-      expect(call.title).toBe('Appointment Rescheduled');
-      expect(call.message).toContain('2026-06-27');
-      expect(call.message).toContain('14:30');
+      const call =
+        mockNotificationService.createNotification.mock.calls[0]?.[0];
+      expect(call).toBeDefined();
+      if (call) {
+        expect(call.type).toBe(NotificationType.APPOINTMENT_RESCHEDULED);
+        expect(call.eventId).toBe(`APPOINTMENT_RESCHEDULED_${appointmentId}`);
+        expect(call.title).toBe('Appointment Rescheduled');
+        expect(call.message).toContain('2026-06-27');
+        expect(call.message).toContain('14:30');
+      }
     });
 
     it('should use customEventKey as eventId when provided', async () => {
@@ -255,9 +267,12 @@ describe('AppointmentService Unit Tests', () => {
         'ELASTIC_SHRINK_appt-uuid-4', // customEventKey
       );
 
-      const call = mockNotificationService.createNotification.mock
-        .calls[0][0] as CreateNotificationDto;
-      expect(call.eventId).toBe('ELASTIC_SHRINK_appt-uuid-4');
+      const call =
+        mockNotificationService.createNotification.mock.calls[0]?.[0];
+      expect(call).toBeDefined();
+      if (call) {
+        expect(call.eventId).toBe('ELASTIC_SHRINK_appt-uuid-4');
+      }
     });
 
     it('should NOT propagate errors from createNotification (non-blocking, fire-and-forget)', async () => {
@@ -295,11 +310,12 @@ describe('AppointmentService Unit Tests', () => {
         undefined,
       );
 
-      // createNotification is still called — the guard is upstream (patientId truthy check)
-      // Verify that if it is called, the DTO contains the empty string (not undefined)
-      // This documents that the caller is responsible for the guard
-      const call = mockNotificationService.createNotification.mock
-        .calls[0]?.[0] as CreateNotificationDto | undefined;
+      const calls = mockNotificationService.createNotification.mock.calls;
+      const call = calls[0] ? calls[0][0] : undefined;
+      expect(call).toBeDefined();
+      if (call) {
+        expect(call.patientId).toBe('');
+      }
       if (call) {
         expect(typeof call.patientId).toBe('string');
       }

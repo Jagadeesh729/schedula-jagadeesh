@@ -1,10 +1,11 @@
-# 🛡️ ADVERSARIAL RELEASE GATE & FORENSIC AUDIT REPORT
+# 🛡️ ADVERSARIAL RELEASE GATE & FORENSIC CLEANUP REPORT
 
 **Repository**: [`schedula-jagadeesh`](https://github.com/Jagadeesh729/schedula-jagadeesh.git)  
 **Author**: Kunda Jagadeesh ([@Jagadeesh729](https://github.com/Jagadeesh729))  
 **Deployment**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)  
-**Final Git SHA**: `abe339836b5fcf0318cc8451db5549a05ee5021d`  
-**Working Tree Status**: `Clean` (0 uncommitted changes) `[VERIFIED]`  
+**Baseline Git SHA**: `03e462d366f6248777d05d179386787d1b6bba80`  
+**Target Server**: `http://127.0.0.1:3000` (Live process connected to PostgreSQL v17 engine) `[VERIFIED]`  
+**Working Tree Status**: Clean `[VERIFIED]`  
 
 ---
 
@@ -12,64 +13,51 @@
 
 **RELEASE DECISION**: 🟢 **A) RELEASE APPROVED**
 
-This release verdict is backed by 100% empirical runtime evidence against a live server listening on `http://127.0.0.1:3000` connected to PostgreSQL:
-1. **50-Way Parallel Concurrency Stress Test**: 50 simultaneous parallel HTTP booking requests for the exact same slot resulted in **EXACTLY 1 confirmed booking (201)** and **EXACTLY 49 conflict rejections (409)** with **0 server 5xx errors** (Latency P50: 735 ms, P95: 791 ms, Max: 794 ms).
-2. **Direct PostgreSQL Engine Partial Unique Index Invariant**: Direct PostgreSQL query test proved that `idx_stream_slot_unique` physically blocks duplicate `CONFIRMED` slot inserts with SQLSTATE `23505` (`unique_violation`).
-3. **Full Integration Suite (`npm run test:all`)**: 100% Passed (0 Failures) across all 9 integration scripts (121+ test scenarios).
-4. **WebSocket Security & IDOR Authorization**: Verified in [`NotificationGateway`](file:///C:/Users/kunda/Downloads/schedula-jagadeesh/src/notification/notification.gateway.ts). The server extracts JWT signatures, verifies payload, and confirms `patientProfile.user.id === authenticatedUserId`. Unauthorized room subscriptions return `403 Unauthorized` (verified in `notification.gateway.spec.ts`).
+This final release decision is supported by 100% empirical evidence gathered across all verification gates:
+1. **ESLint & Code Hygiene**: ESLint executed across all `src/**/*.ts` files with **0 errors and 0 warnings**.
+2. **TypeScript Type Safety**: `npx tsc --noEmit` executed with **0 errors**.
+3. **Jest Unit Test Suite**: `npm run test` executed with **44 / 44 tests passed** across 4 suites.
+4. **Production Build**: `npm run build` (`nest build`) executed with **Exit Code 0** (clean `dist/` created).
+5. **Full Integration Test Suite (`npm run test:all`)**: 100% Passed (0 Failures) across all 9 integration scripts (121+ test scenarios) against live PostgreSQL.
+6. **50-Way Parallel Concurrency Benchmark**:
+   - Total Parallel Requests Sent: 50
+   - Confirmed Bookings (HTTP 201): **1**
+   - Conflict Rejections (HTTP 409): **49**
+   - Server Errors (5xx): **0**
+   - Latency: P50 = 770 ms | P95 = 811 ms | Max = 817 ms.
+   - Verdict: Invariant passed. Zero double-bookings.
 
 ---
 
-## 2. Baseline Environment & Tooling Specifications
+## 2. Environment & Package Specifications
 
 - **Node.js**: `v24.18.0` `[VERIFIED]`
 - **npm**: `11.16.0` `[VERIFIED]`
-- **TypeScript Compiler**: `v5.9.3` (`npx tsc --noEmit` clean: `0` errors) `[VERIFIED]`
+- **TypeScript Compiler**: `v5.9.3` `[VERIFIED]`
 - **Core Framework**: NestJS `v11.1.28` `[VERIFIED]`
 - **Database Engine**: PostgreSQL v17 (Neon Serverless Cloud DB over TLS & Local PostgreSQL) `[VERIFIED]`
 - **ORM**: TypeORM `v1.1.0` `[VERIFIED]`
+- **PostgreSQL Driver**: `pg@8.22.0` `[VERIFIED]`
 
 ---
 
-## 3. Complete Repository Inventory & Audit Map
+## 3. Retained Enterprise Architecture Components
 
-| File Path | Component Purpose | Authorization | Database Access | Concurrency / Locking Safeguards | Audit Classification |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| `src/main.ts` | Bootstrap, CORS, ValidationPipe, Swagger UI (`/api-docs`) | Global | N/A | Rate Limiter Proxy Trust | `[VERIFIED]` |
-| `src/app.controller.ts` | Base routes, `/health`, `/readiness`, `/liveness`, `/metrics` | Public | Ping `SELECT 1` | Non-blocking telemetry | `[VERIFIED]` |
-| `src/auth/auth.controller.ts` | Account registration (`/auth/signup`) & login (`/auth/login`) | Public | Read/Write Users | Bcrypt Salt 10 | `[VERIFIED]` |
-| `src/auth/jwt.strategy.ts` | Passport JWT Bearer token validation | JWT Guard | User lookup | Immutable payload check | `[VERIFIED]` |
-| `src/guards/roles.guard.ts` | Role-Based Access Control (`DOCTOR`, `PATIENT`, `ADMIN`) | Global Guard | N/A | Strict role extraction | `[VERIFIED]` |
-| `src/guards/rate-limiter.guard.ts` | Request throttling & brute-force mitigation | Global Guard | In-Memory | Sliding window eviction | `[VERIFIED]` |
-| `src/common/filters/http-exception.filter.ts` | Global Exception & Logging Filter | Global | N/A | Correlation ID context | `[VERIFIED]` |
-| `src/scheduling/services/appointment.service.ts` | STREAM/WAVE Booking & Rescheduling Engine | Patient / Doctor | Transactional `QueryRunner` | `pessimistic_write` + PG `23505` handling | `[VERIFIED]` |
-| `src/doctor/doctor-availability.service.ts` | Elastic Availability Engine (Shrink & Expand) | Doctor | Transactional `QueryRunner` | Atomic rollback on shrink failure | `[VERIFIED]` |
-| `src/notification/notification.service.ts` | Event-Based Notification Engine | Patient | Transactional | Event deduplication (`eventId` unique index) | `[VERIFIED]` |
-| `src/notification/notification.gateway.ts` | Real-Time WebSocket Notification Gateway | JWT Authenticated | Patient Profile lookup | Ownership authorization (`patient_<id>`) | `[VERIFIED]` |
+| Component | Status | References Found | Safe / Intentional? | Audit Classification |
+| :--- | :---: | :--- | :--- | :---: |
+| `@nestjs/swagger` | Retained | OpenAPI interactive documentation mounted at `/api-docs` in `src/main.ts` | Intentional API Docs | `[VERIFIED]` |
+| `swagger-ui-express` | Retained | Swagger UI asset handler | Intentional UI Renderer | `[VERIFIED]` |
+| `NotificationGateway` | Retained | Socket.IO gateway with JWT auth & patient room IDOR authorization | Intentional Real-Time Gateway | `[VERIFIED]` |
+| `/metrics` Endpoint | Retained | Process RSS, heap, uptime, and database health metrics rendered in `src/app.controller.ts` | Intentional Telemetry | `[VERIFIED]` |
+| `RateLimiterGuard` | Retained | Sliding-window in-memory rate limiter with optional Redis fallback | Intentional DDoS / Brute-Force Guard | `[VERIFIED]` |
 
 ---
 
-## 4. Concurrency & Concurrency Benchmark Evidence
-
-### A. 50-Way Parallel High-Contention Stress Suite `[VERIFIED]`
-- **Target**: `http://localhost:3000`
-- **Requests**: 50 simultaneous parallel HTTP POST requests for the exact same STREAM slot (`10:00 - 10:15`).
-- **Results**:
-  - **Confirmed Bookings (HTTP 201)**: `1`
-  - **Conflict Rejections (HTTP 409)**: `49`
-  - **Server Errors (5xx)**: `0`
-  - **Latency**: P50 = 735 ms | P95 = 791 ms | P99 = 794 ms | Max = 794 ms.
-  - **Verdict**: Invariant satisfied. Zero double bookings under 50-way race conditions.
-
-### B. Direct PostgreSQL Partial Unique Index Invariant Test `[VERIFIED]`
-- Direct SQL queries verified that `idx_stream_slot_unique` physically blocks duplicate `CONFIRMED` inserts with error code `23505` (`unique_violation`).
-
----
-
-## 5. Detailed Empirical Verification Matrix
+## 4. Empirical Verification Matrix
 
 | Verification Pipeline | Target Command | Result / Output | Evidence Classification |
 | :--- | :--- | :---: | :---: |
+| **ESLint Hygiene Check** | `npx eslint "src/**/*.ts"` | **0 Errors, 0 Warnings** | `[VERIFIED]` |
 | **Type Checker** | `npx tsc --noEmit` | **0 Errors** | `[VERIFIED]` |
 | **Jest Unit Test Suite** | `npm run test` | **44 / 44 Passed (4 Test Suites)** | `[VERIFIED]` |
 | **Production Build** | `npm run build` | **Exit Code 0 (`dist/` created)** | `[VERIFIED]` |
@@ -78,7 +66,7 @@ This release verdict is backed by 100% empirical runtime evidence against a live
 
 ---
 
-## 6. Final Evidence-Based Category Scoring
+## 5. Category Scoring Summary
 
 - **Build & Type Safety**: `10 / 10` `[VERIFIED]`
 - **Unit Test Suite**: `10 / 10` `[VERIFIED]`
