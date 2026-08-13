@@ -108,7 +108,12 @@ export class ReminderService {
         continue;
       }
 
-      const doctorName = appointment.doctor.fullName || 'your doctor';
+      const rawDoctorName = appointment.doctor.fullName || 'your doctor';
+      const formattedDoctorName =
+        rawDoctorName.startsWith('Dr.') || rawDoctorName.startsWith('Dr ')
+          ? rawDoctorName
+          : `Dr. ${rawDoctorName}`;
+
       const eventId = `reminder_${appointment.id}`;
 
       let title = 'Appointment Reminder';
@@ -119,7 +124,7 @@ export class ReminderService {
         appointment.slotStartTime
       ) {
         title = 'Appointment Reminder';
-        message = `Reminder: You have an appointment with Dr. ${doctorName} on ${appointment.date} at ${appointment.slotStartTime}.`;
+        message = `Reminder: You have an appointment with ${formattedDoctorName} on ${appointment.date} at ${appointment.slotStartTime}.`;
       } else if (
         appointment.scheduleType === SchedulingType.WAVE ||
         appointment.window
@@ -130,7 +135,7 @@ export class ReminderService {
         }
         const windowStart = appointment.window.split('-')[0]?.trim() || '';
         title = 'Appointment Reminder';
-        message = `Reminder: You have an appointment with Dr. ${doctorName} today. Reporting Time: ${windowStart}. Token Number: ${appointment.token}`;
+        message = `Reminder: You have an appointment with ${formattedDoctorName} today. Reporting Time: ${windowStart}. Token Number: ${appointment.token}`;
       } else {
         stats.skipped++;
         continue;

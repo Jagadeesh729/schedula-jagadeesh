@@ -31,9 +31,9 @@ export class NotificationController {
     private readonly reminderService: ReminderService,
   ) {}
 
-  @Post(['notifications/trigger-reminders', 'notification/trigger-reminders'])
+  @Post('notifications/trigger-reminders')
   @HttpCode(200)
-  @Roles('DOCTOR', 'ADMIN', 'PATIENT')
+  @Roles('DOCTOR', 'ADMIN')
   async triggerReminders() {
     const stats = await this.reminderService.processAppointmentReminders();
     return {
