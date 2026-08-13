@@ -2,12 +2,15 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/notification.dto';
 import { PatientProfile } from '../patient/entities/patient-profile.entity';
+import { NotificationGateway } from './notification.gateway';
+import { NotificationQueueService } from './notification.queue';
 
 @Injectable()
 export class NotificationService {
@@ -16,6 +19,8 @@ export class NotificationService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(PatientProfile)
     private readonly patientProfileRepo: Repository<PatientProfile>,
+    @Optional() private readonly notificationGateway?: NotificationGateway,
+    @Optional() private readonly notificationQueue?: NotificationQueueService,
   ) {}
 
   /**
@@ -47,7 +52,32 @@ export class NotificationService {
         eventId: dto.eventId,
         isRead: false,
       });
-      return await repo.save(notification);
+      const saved = await repo.save(notification);
+
+      // Emit real-time WebSocket event & enqueue async background job
+      if (this.notificationGateway) {
+        this.notificationGateway.notifyPatient(saved.patientId, {
+          id: saved.id,
+          type: saved.type,
+          title: saved.title,
+          message: saved.message,
+          appointmentId: saved.appointmentId,
+          createdAt: saved.createdAt,
+        });
+      }
+
+      if (this.notificationQueue) {
+        this.notificationQueue.enqueueJob({
+          patientId: saved.patientId,
+          type: saved.type,
+          appointmentId: saved.appointmentId || '',
+          eventId: saved.eventId || '',
+          title: saved.title,
+          message: saved.message,
+        });
+      }
+
+      return saved;
     } catch (err: unknown) {
       if (
         typeof err === 'object' &&
