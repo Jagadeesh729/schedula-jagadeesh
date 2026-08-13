@@ -10,7 +10,6 @@ import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/notification.dto';
 import { PatientProfile } from '../patient/entities/patient-profile.entity';
 import { NotificationGateway } from './notification.gateway';
-import { NotificationQueueService } from './notification.queue';
 
 @Injectable()
 export class NotificationService {
@@ -20,12 +19,12 @@ export class NotificationService {
     @InjectRepository(PatientProfile)
     private readonly patientProfileRepo: Repository<PatientProfile>,
     @Optional() private readonly notificationGateway?: NotificationGateway,
-    @Optional() private readonly notificationQueue?: NotificationQueueService,
   ) {}
 
   /**
    * Create notification automatically for an appointment event.
    * Prevents duplicates by checking eventId or catching SQLSTATE 23505 unique constraint violation.
+   * If manager (EntityManager) is passed, creation is executed within the active database transaction.
    */
   async createNotification(
     dto: CreateNotificationDto,
@@ -54,7 +53,7 @@ export class NotificationService {
       });
       const saved = await repo.save(notification);
 
-      // Emit real-time WebSocket event & enqueue async background job
+      // Emit real-time WebSocket event AFTER DB persist
       if (this.notificationGateway) {
         this.notificationGateway.notifyPatient(saved.patientId, {
           id: saved.id,
@@ -63,17 +62,6 @@ export class NotificationService {
           message: saved.message,
           appointmentId: saved.appointmentId,
           createdAt: saved.createdAt,
-        });
-      }
-
-      if (this.notificationQueue) {
-        this.notificationQueue.enqueueJob({
-          patientId: saved.patientId,
-          type: saved.type,
-          appointmentId: saved.appointmentId || '',
-          eventId: saved.eventId || '',
-          title: saved.title,
-          message: saved.message,
         });
       }
 
