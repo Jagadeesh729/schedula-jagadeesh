@@ -37,7 +37,7 @@ export class NotificationService {
     if (dto.eventId) {
       const existing = await repo.findOne({ where: { eventId: dto.eventId } });
       if (existing) {
-        return existing;
+        return Object.assign(existing, { isExisting: true });
       }
     }
 

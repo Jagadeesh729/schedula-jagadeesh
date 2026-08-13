@@ -57,7 +57,7 @@ Schedula is built following a clean **4-Tier NestJS Architecture** (Controller $
 │  - DoctorAvailabilityCtrl  (/doctor/availability, /doctor/availability/:id)│
 │  - DoctorsSchedulingCtrl   (/doctors/:doctorId/scheduling)             │
 │  - AppointmentController   (/appointment/book, /appointment/reschedule)│
-│  - NotificationController  (/notifications, /notifications/:id/read)  │
+│  - NotificationController  (/notifications, /notifications/trigger-reminders)│
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼

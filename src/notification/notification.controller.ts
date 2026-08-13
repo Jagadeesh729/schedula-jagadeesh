@@ -1,14 +1,17 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Param,
   UseGuards,
   Request,
+  HttpCode,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { ReminderService } from './reminder.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
@@ -22,11 +25,25 @@ interface RequestWithUser {
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('PATIENT')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly reminderService: ReminderService,
+  ) {}
+
+  @Post(['notifications/trigger-reminders', 'notification/trigger-reminders'])
+  @HttpCode(200)
+  @Roles('DOCTOR', 'ADMIN', 'PATIENT')
+  async triggerReminders() {
+    const stats = await this.reminderService.processAppointmentReminders();
+    return {
+      message: 'Appointment reminders processed',
+      ...stats,
+    };
+  }
 
   @Get(['notifications', 'notification'])
+  @Roles('PATIENT')
   async getNotifications(@Request() req: RequestWithUser) {
     return this.notificationService.getPatientNotifications(req.user.id);
   }
