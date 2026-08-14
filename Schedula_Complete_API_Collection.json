@@ -1,833 +1,687 @@
 {
-	"info": {
-		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "Schedula Enterprise Medical Appointment System API",
-		"description": "Complete production API collection for Schedula Backend (NestJS + TypeORM + PostgreSQL). Contains all 28 active, tested endpoints organized by module.",
-		"schema": "https://getpostman.com/schemas/v6.0.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "01 Authentication",
-			"item": [
-				{
-					"name": "Register User (POST /auth/signup)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"DOCTOR\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/auth/signup",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"auth",
-								"signup"
-							]
-						}
-					}
-				},
-				{
-					"name": "Login User (POST /auth/login)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Password123!\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/auth/login",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"auth",
-								"login"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "02 Doctor Profile Onboarding",
-			"item": [
-				{
-					"name": "Create Doctor Profile (POST /doctor/profile)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"specialization\": \"Cardiology\",\n  \"experienceYears\": 10,\n  \"consultationFee\": 150.00,\n  \"qualification\": \"MD, FACC\",\n  \"bio\": \"Experienced cardiologist specializing in preventative heart care.\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/doctor/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"profile"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Doctor Profile (GET /doctor/profile)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/doctor/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"profile"
-							]
-						}
-					}
-				},
-				{
-					"name": "Update Doctor Profile (PATCH /doctor/profile)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"consultationFee\": 175.00,\n  \"bio\": \"Senior Cardiologist & Heart Specialist.\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/doctor/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"profile"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "03 Patient Profile Onboarding",
-			"item": [
-				{
-					"name": "Create Patient Profile (POST /patient/profile)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"fullName\": \"John Doe\",\n  \"age\": 35,\n  \"gender\": \"MALE\",\n  \"contactNumber\": \"+15550192834\",\n  \"medicalHistory\": \"No chronic conditions.\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/patient/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"patient",
-								"profile"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Patient Profile (GET /patient/profile)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/patient/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"patient",
-								"profile"
-							]
-						}
-					}
-				},
-				{
-					"name": "Update Patient Profile (PATCH /patient/profile)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"contactNumber\": \"+15559998877\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/patient/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"patient",
-								"profile"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "04 Doctor Availability Engine",
-			"item": [
-				{
-					"name": "Create Recurring Weekly Availability (POST /doctor/availability)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"dayOfWeek\": \"MONDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"17:00\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/doctor/availability",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"availability"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Doctor Weekly Recurring Availabilities (GET /doctor/availability)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/doctor/availability",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"availability"
-							]
-						}
-					}
-				},
-				{
-					"name": "Update Recurring Availability (PATCH /doctor/availability/:id)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"startTime\": \"10:00\",\n  \"endTime\": \"16:00\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/doctor/availability/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"availability",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "availability-uuid-here"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Delete Recurring Availability (DELETE /doctor/availability/:id)",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/doctor/availability/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"availability",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "availability-uuid-here"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Create Custom Date Override (POST /doctor/availability/override)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"overrideDate\": \"2026-08-15\",\n  \"startTime\": \"08:00\",\n  \"endTime\": \"12:00\",\n  \"isAvailable\": true\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/doctor/availability/override",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"availability",
-								"override"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Date Specific Availability (GET /doctor/availability/date)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/doctor/availability/date?date=2026-08-10",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"availability",
-								"date"
-							],
-							"query": [
-								{
-									"key": "date",
-									"value": "2026-08-10"
-								}
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "05 Advanced Doctor Scheduling Strategies",
-			"item": [
-				{
-					"name": "Configure Doctor Scheduling Strategy (POST /doctors/:doctorId/scheduling)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"type\": \"STREAM\",\n  \"slotDurationMinutes\": 15,\n  \"bufferTimeMinutes\": 5\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/doctors/:doctorId/scheduling",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctors",
-								":doctorId",
-								"scheduling"
-							],
-							"variable": [
-								{
-									"key": "doctorId",
-									"value": "doctor-user-uuid"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Generated Doctor Slots or Windows (GET /doctors/:doctorId/availability)",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/doctors/:doctorId/availability?date=2026-08-10",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctors",
-								":doctorId",
-								"availability"
-							],
-							"query": [
-								{
-									"key": "date",
-									"value": "2026-08-10"
-								}
-							],
-							"variable": [
-								{
-									"key": "doctorId",
-									"value": "doctor-user-uuid"
-								}
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "06 Appointment Booking & Management",
-			"item": [
-				{
-					"name": "Book Appointment (POST /appointment)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"doctorId\": \"doctor-user-uuid\",\n  \"appointmentDate\": \"2026-08-10\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"10:15\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/appointment",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"appointment"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Patient Appointments (GET /appointment/my)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/appointment/my",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"appointment",
-								"my"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Doctor Appointments (GET /doctor/appointments)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/doctor/appointments",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"doctor",
-								"appointments"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Specific Appointment By ID (GET /appointment/:id)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/appointment/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"appointment",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "appointment-uuid-here"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Cancel Appointment (PATCH /appointment/:id/cancel)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/appointment/:id/cancel",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"appointment",
-								":id",
-								"cancel"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "appointment-uuid-here"
-								}
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "07 Appointment Rescheduling Engine",
-			"item": [
-				{
-					"name": "Reschedule Appointment (PATCH /appointment/:id/reschedule)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"newDate\": \"2026-08-17\",\n  \"newStartTime\": \"11:00\",\n  \"newEndTime\": \"11:15\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/appointment/:id/reschedule",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"appointment",
-								":id",
-								"reschedule"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "appointment-uuid-here"
-								}
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "08 Event-Based Notifications & Reminders",
-			"item": [
-				{
-					"name": "Get Patient Notifications (GET /notifications)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notifications",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notifications"
-							]
-						}
-					}
-				},
-				{
-					"name": "Mark Notification as Read (PATCH /notifications/:id/read)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notifications/:id/read",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notifications",
-								":id",
-								"read"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "notification-uuid-here"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Mark All Notifications Read (PATCH /notifications/read-all)",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notifications/read-all",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notifications",
-								"read-all"
-							]
-						}
-					}
-				},
-				{
-					"name": "Delete Specific Notification (DELETE /notifications/:id)",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notifications/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notifications",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "notification-uuid-here"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Delete All Patient Notifications (DELETE /notifications)",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notifications",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notifications"
-							]
-						}
-					}
-				},
-				{
-					"name": "Trigger Appointment Reminders (POST /notifications/trigger-reminders)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{authToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notifications/trigger-reminders",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notifications",
-								"trigger-reminders"
-							]
-						}
-					}
-				}
-			]
-		}
-	],
-	"variable": [
-		{
-			"key": "baseUrl",
-			"value": "https://schedula-backend-45oj.onrender.com",
-			"type": "string"
-		},
-		{
-			"key": "authToken",
-			"value": "",
-			"type": "string"
-		}
-	]
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Schedula Enterprise Medical Appointment System API",
+    "description": "Complete production API collection for Schedula Backend (NestJS + TypeORM + PostgreSQL). Contains all 28 active, tested endpoints organized by module.",
+    "schema": "https://getpostman.com/schemas/v6.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Authentication",
+      "item": [
+        {
+          "name": "Register User (POST /auth/signup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Password123!\",\n  \"role\": \"DOCTOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Login User (POST /auth/login)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@hospital.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Doctor Profile Onboarding",
+      "item": [
+        {
+          "name": "Create Doctor Profile (POST /doctor/profile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"specialization\": \"Cardiology\",\n  \"experienceYears\": 10,\n  \"consultationFee\": 150.00,\n  \"qualification\": \"MD, FACC\",\n  \"bio\": \"Experienced cardiologist specializing in preventative heart care.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doctor/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor Profile (GET /doctor/profile)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/doctor/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Doctor Profile (PATCH /doctor/profile)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"consultationFee\": 175.00,\n  \"bio\": \"Senior Cardiologist & Heart Specialist.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doctor/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Patient Profile Onboarding",
+      "item": [
+        {
+          "name": "Create Patient Profile (POST /patient/profile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"age\": 35,\n  \"gender\": \"MALE\",\n  \"contactNumber\": \"+15550192834\",\n  \"medicalHistory\": \"No chronic conditions.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patient/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Get Patient Profile (GET /patient/profile)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Patient Profile (PATCH /patient/profile)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactNumber\": \"+15559998877\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patient/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Doctor Availability Engine",
+      "item": [
+        {
+          "name": "Create Recurring Weekly Availability (POST /doctor/availability)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dayOfWeek\": \"MONDAY\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"17:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "availability"]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor Weekly Recurring Availabilities (GET /doctor/availability)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "availability"]
+            }
+          }
+        },
+        {
+          "name": "Update Recurring Availability (PATCH /doctor/availability/:id)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startTime\": \"10:00\",\n  \"endTime\": \"16:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "availability", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "availability-uuid-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Recurring Availability (DELETE /doctor/availability/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "availability", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "availability-uuid-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Custom Date Override (POST /doctor/availability/override)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"overrideDate\": \"2026-08-15\",\n  \"startTime\": \"08:00\",\n  \"endTime\": \"12:00\",\n  \"isAvailable\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/override",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "availability", "override"]
+            }
+          }
+        },
+        {
+          "name": "Get Date Specific Availability (GET /doctor/availability/date)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/doctor/availability/date?date=2026-08-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "availability", "date"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-08-10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Advanced Doctor Scheduling Strategies",
+      "item": [
+        {
+          "name": "Configure Doctor Scheduling Strategy (POST /doctors/:doctorId/scheduling)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"STREAM\",\n  \"slotDurationMinutes\": 15,\n  \"bufferTimeMinutes\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/doctors/:doctorId/scheduling",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctors", ":doctorId", "scheduling"],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": "doctor-user-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Generated Doctor Slots or Windows (GET /doctors/:doctorId/availability)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/doctors/:doctorId/availability?date=2026-08-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctors", ":doctorId", "availability"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-08-10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": "doctor-user-uuid"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Appointment Booking & Management",
+      "item": [
+        {
+          "name": "Book Appointment (POST /appointment)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"doctor-user-uuid\",\n  \"appointmentDate\": \"2026-08-10\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"10:15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointment",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointment"]
+            }
+          }
+        },
+        {
+          "name": "Get Patient Appointments (GET /appointment/my)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointment/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointment", "my"]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor Appointments (GET /doctor/appointments)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/doctor/appointments",
+              "host": ["{{baseUrl}}"],
+              "path": ["doctor", "appointments"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Appointment By ID (GET /appointment/:id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointment/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointment", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment-uuid-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Appointment (PATCH /appointment/:id/cancel)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointment/:id/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointment", ":id", "cancel"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment-uuid-here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Appointment Rescheduling Engine",
+      "item": [
+        {
+          "name": "Reschedule Appointment (PATCH /appointment/:id/reschedule)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newDate\": \"2026-08-17\",\n  \"newStartTime\": \"11:00\",\n  \"newEndTime\": \"11:15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointment/:id/reschedule",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointment", ":id", "reschedule"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "appointment-uuid-here"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Event-Based Notifications & Reminders",
+      "item": [
+        {
+          "name": "Get Patient Notifications (GET /notifications)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read (PATCH /notifications/:id/read)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/:id/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", ":id", "read"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "notification-uuid-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications Read (PATCH /notifications/read-all)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "read-all"]
+            }
+          }
+        },
+        {
+          "name": "Delete Specific Notification (DELETE /notifications/:id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "notification-uuid-here"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete All Patient Notifications (DELETE /notifications)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "Trigger Appointment Reminders (POST /notifications/trigger-reminders)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/trigger-reminders",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "trigger-reminders"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://schedula-backend-45oj.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
 }

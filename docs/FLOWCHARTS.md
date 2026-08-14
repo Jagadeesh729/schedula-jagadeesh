@@ -55,7 +55,7 @@ graph TD
     J -->|No| L[Flag for Patient Reschedule / Cancel as Last Resort & Send Notification]
 ```
 
-```mermaid
+````mermaid
 graph TD
     A[Patient Request: Reschedule Appointment PATCH /appointment/:id/reschedule] --> B{Appointment Exists?}
     B -->|No| C[Return 404 Not Found]
@@ -91,7 +91,9 @@ graph TD
     L --> N[Insert Notification & Broadcast Real-Time WebSocket Event]
     M --> N
     N --> O[Log Reminder Created Successfully]
-```
+````
+
 ```
 
 
+```

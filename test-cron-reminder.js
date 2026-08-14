@@ -20,23 +20,19 @@ function request(method, path, body = null, token = null) {
       headers['Content-Length'] = Buffer.byteLength(payload);
     }
 
-    const req = http.request(
-      url,
-      { method, headers },
-      (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => {
-          let parsed;
-          try {
-            parsed = JSON.parse(data);
-          } catch {
-            parsed = data;
-          }
-          resolve({ status: res.statusCode, body: parsed });
-        });
-      },
-    );
+    const req = http.request(url, { method, headers }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        let parsed;
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          parsed = data;
+        }
+        resolve({ status: res.statusCode, body: parsed });
+      });
+    });
 
     req.on('error', reject);
     if (payload) req.write(payload);
@@ -68,8 +64,13 @@ async function runReminderSuite() {
   console.log('====================================================\n');
 
   // 1. Manual Trigger Authorization Security Test
-  console.log('1. Testing Manual Trigger Authorization & Privilege Narrowing...');
-  const unauthTrigger = await request('POST', '/notifications/trigger-reminders');
+  console.log(
+    '1. Testing Manual Trigger Authorization & Privilege Narrowing...',
+  );
+  const unauthTrigger = await request(
+    'POST',
+    '/notifications/trigger-reminders',
+  );
   assert(
     unauthTrigger.status === 401,
     'Unauthenticated POST /notifications/trigger-reminders rejected with 401 Unauthorized',
@@ -96,16 +97,26 @@ async function runReminderSuite() {
   });
   const doc1Token = doc1Login.body.access_token;
 
-  await request('POST', '/doctor/profile', {
-    fullName: 'Dr. Sarah Connor',
-    specialization: 'Cardiology',
-    experience: 10,
-    qualification: 'MD',
-    consultationFee: 150,
-    availability: '00:00 - 23:59',
-    profileDetails: 'Stream Specialist',
-  }, doc1Token);
-  const doc1ProfileRes = await request('GET', '/doctor/profile', null, doc1Token);
+  await request(
+    'POST',
+    '/doctor/profile',
+    {
+      fullName: 'Dr. Sarah Connor',
+      specialization: 'Cardiology',
+      experience: 10,
+      qualification: 'MD',
+      consultationFee: 150,
+      availability: '00:00 - 23:59',
+      profileDetails: 'Stream Specialist',
+    },
+    doc1Token,
+  );
+  const doc1ProfileRes = await request(
+    'GET',
+    '/doctor/profile',
+    null,
+    doc1Token,
+  );
   const doc1ProfileId = doc1ProfileRes.body.id;
 
   // Doctor 2 (WAVE)
@@ -121,16 +132,26 @@ async function runReminderSuite() {
   });
   const doc2Token = doc2Login.body.access_token;
 
-  await request('POST', '/doctor/profile', {
-    fullName: 'Dr. John Doe',
-    specialization: 'Pediatrics',
-    experience: 8,
-    qualification: 'MD',
-    consultationFee: 120,
-    availability: '00:00 - 23:59',
-    profileDetails: 'Wave Specialist',
-  }, doc2Token);
-  const doc2ProfileRes = await request('GET', '/doctor/profile', null, doc2Token);
+  await request(
+    'POST',
+    '/doctor/profile',
+    {
+      fullName: 'Dr. John Doe',
+      specialization: 'Pediatrics',
+      experience: 8,
+      qualification: 'MD',
+      consultationFee: 120,
+      availability: '00:00 - 23:59',
+      profileDetails: 'Wave Specialist',
+    },
+    doc2Token,
+  );
+  const doc2ProfileRes = await request(
+    'GET',
+    '/doctor/profile',
+    null,
+    doc2Token,
+  );
   const doc2ProfileId = doc2ProfileRes.body.id;
 
   // Tomorrow's date and weekday
@@ -140,17 +161,27 @@ async function runReminderSuite() {
   const futureDayName = WEEKDAYS[futureDate.getDay()];
 
   // Doctor Availability
-  await request('POST', '/doctor/availability', {
-    weekday: futureDayName,
-    startTime: '08:00',
-    endTime: '20:00',
-  }, doc1Token);
+  await request(
+    'POST',
+    '/doctor/availability',
+    {
+      weekday: futureDayName,
+      startTime: '08:00',
+      endTime: '20:00',
+    },
+    doc1Token,
+  );
 
-  await request('POST', '/doctor/availability', {
-    weekday: futureDayName,
-    startTime: '08:00',
-    endTime: '20:00',
-  }, doc2Token);
+  await request(
+    'POST',
+    '/doctor/availability',
+    {
+      weekday: futureDayName,
+      startTime: '08:00',
+      endTime: '20:00',
+    },
+    doc2Token,
+  );
 
   // Patient 1
   await request('POST', '/auth/signup', {
@@ -165,12 +196,17 @@ async function runReminderSuite() {
   });
   const pat1Token = pat1Login.body.access_token;
 
-  await request('POST', '/patient/profile', {
-    fullName: 'Patient Remindee One',
-    age: 30,
-    gender: 'Male',
-    contactDetails: '555-1234',
-  }, pat1Token);
+  await request(
+    'POST',
+    '/patient/profile',
+    {
+      fullName: 'Patient Remindee One',
+      age: 30,
+      gender: 'Male',
+      contactDetails: '555-1234',
+    },
+    pat1Token,
+  );
 
   // Patient 2
   await request('POST', '/auth/signup', {
@@ -185,15 +221,25 @@ async function runReminderSuite() {
   });
   const pat2Token = pat2Login.body.access_token;
 
-  await request('POST', '/patient/profile', {
-    fullName: 'Patient Remindee Two',
-    age: 28,
-    gender: 'Female',
-    contactDetails: '555-5678',
-  }, pat2Token);
+  await request(
+    'POST',
+    '/patient/profile',
+    {
+      fullName: 'Patient Remindee Two',
+      age: 28,
+      gender: 'Female',
+      contactDetails: '555-5678',
+    },
+    pat2Token,
+  );
 
   // Verify Patient Role Rejection on Trigger Endpoint
-  const patForbiddenTrigger = await request('POST', '/notifications/trigger-reminders', {}, pat1Token);
+  const patForbiddenTrigger = await request(
+    'POST',
+    '/notifications/trigger-reminders',
+    {},
+    pat1Token,
+  );
   assert(
     patForbiddenTrigger.status === 403,
     'Patient role POST /notifications/trigger-reminders rejected with 403 Forbidden (Privilege Escalation Guarded)',
@@ -201,56 +247,93 @@ async function runReminderSuite() {
 
   // 3. Configure STREAM and WAVE Scheduling Strategies
   console.log('\n3. Configuring STREAM and WAVE scheduling strategies...');
-  await request('POST', `/doctors/${doc1ProfileId}/scheduling`, {
-    schedulingType: 'STREAM',
-    slotDuration: 15,
-    bufferTime: 5,
-  }, doc1Token);
+  await request(
+    'POST',
+    `/doctors/${doc1ProfileId}/scheduling`,
+    {
+      schedulingType: 'STREAM',
+      slotDuration: 15,
+      bufferTime: 5,
+    },
+    doc1Token,
+  );
 
-  await request('POST', `/doctors/${doc2ProfileId}/scheduling`, {
-    schedulingType: 'WAVE',
-    maxCapacity: 5,
-  }, doc2Token);
+  await request(
+    'POST',
+    `/doctors/${doc2ProfileId}/scheduling`,
+    {
+      schedulingType: 'WAVE',
+      maxCapacity: 5,
+    },
+    doc2Token,
+  );
 
   // 4. Book Appointments
   console.log('\n4. Booking STREAM and WAVE appointments...');
-  const streamBooking = await request('POST', '/appointment/book', {
-    doctorId: doc1ProfileId,
-    date: futureDateStr,
-    scheduleType: 'STREAM',
-    startTime: '10:00',
-    endTime: '10:15',
-  }, pat1Token);
+  const streamBooking = await request(
+    'POST',
+    '/appointment/book',
+    {
+      doctorId: doc1ProfileId,
+      date: futureDateStr,
+      scheduleType: 'STREAM',
+      startTime: '10:00',
+      endTime: '10:15',
+    },
+    pat1Token,
+  );
   assert(
     streamBooking.status === 201 && !!streamBooking.body.id,
     `STREAM Appointment booked successfully (ID: ${streamBooking.body?.id})`,
   );
 
-  const waveBooking = await request('POST', '/appointment/book', {
-    doctorId: doc2ProfileId,
-    date: futureDateStr,
-    scheduleType: 'WAVE',
-    window: '11:00-12:00',
-  }, pat2Token);
+  const waveBooking = await request(
+    'POST',
+    '/appointment/book',
+    {
+      doctorId: doc2ProfileId,
+      date: futureDateStr,
+      scheduleType: 'WAVE',
+      window: '11:00-12:00',
+    },
+    pat2Token,
+  );
   assert(
     waveBooking.status === 201 && !!waveBooking.body.id,
     `WAVE Appointment booked successfully with Token #${waveBooking.body?.token}`,
   );
 
   // Book and Cancel an Appointment (Exclusion Test)
-  const cancelBooking = await request('POST', '/appointment/book', {
-    doctorId: doc1ProfileId,
-    date: futureDateStr,
-    scheduleType: 'STREAM',
-    startTime: '10:20',
-    endTime: '10:35',
-  }, pat1Token);
-  await request('PATCH', `/appointment/${cancelBooking.body.id}/cancel`, {}, pat1Token);
+  const cancelBooking = await request(
+    'POST',
+    '/appointment/book',
+    {
+      doctorId: doc1ProfileId,
+      date: futureDateStr,
+      scheduleType: 'STREAM',
+      startTime: '10:20',
+      endTime: '10:35',
+    },
+    pat1Token,
+  );
+  await request(
+    'PATCH',
+    `/appointment/${cancelBooking.body.id}/cancel`,
+    {},
+    pat1Token,
+  );
   console.log(`Cancelled appointment ${cancelBooking.body.id}`);
 
   // 5. Automatic Cron & Manual Trigger Verification
-  console.log('\n5. Executing reminder trigger via authorized Doctor account...');
-  const triggerRes = await request('POST', '/notifications/trigger-reminders', {}, doc1Token);
+  console.log(
+    '\n5. Executing reminder trigger via authorized Doctor account...',
+  );
+  const triggerRes = await request(
+    'POST',
+    '/notifications/trigger-reminders',
+    {},
+    doc1Token,
+  );
   assert(
     triggerRes.status === 200 || triggerRes.status === 201,
     `POST /notifications/trigger-reminders returned Success for authorized doctor (Status: ${triggerRes.status})`,
@@ -261,14 +344,24 @@ async function runReminderSuite() {
   );
 
   // 6. Verify Content & Exact Formatting
-  console.log('\n6. Verifying notification listing & clean message formatting...');
+  console.log(
+    '\n6. Verifying notification listing & clean message formatting...',
+  );
   const pat1NotifsRes = await request('GET', '/notifications', null, pat1Token);
-  assert(pat1NotifsRes.status === 200, 'Patient 1 GET /notifications returned 200 OK');
+  assert(
+    pat1NotifsRes.status === 200,
+    'Patient 1 GET /notifications returned 200 OK',
+  );
 
   const pat1Reminder = (pat1NotifsRes.body.data || []).find(
-    (n) => n.appointmentId === streamBooking.body.id && n.type === 'APPOINTMENT_REMINDER',
+    (n) =>
+      n.appointmentId === streamBooking.body.id &&
+      n.type === 'APPOINTMENT_REMINDER',
   );
-  assert(!!pat1Reminder, 'STREAM appointment reminder notification found for Patient 1');
+  assert(
+    !!pat1Reminder,
+    'STREAM appointment reminder notification found for Patient 1',
+  );
   assert(
     pat1Reminder.message.includes('Dr. Sarah Connor') &&
       !pat1Reminder.message.includes('Dr. Dr.') &&
@@ -277,12 +370,20 @@ async function runReminderSuite() {
   );
 
   const pat2NotifsRes = await request('GET', '/notifications', null, pat2Token);
-  assert(pat2NotifsRes.status === 200, 'Patient 2 GET /notifications returned 200 OK');
+  assert(
+    pat2NotifsRes.status === 200,
+    'Patient 2 GET /notifications returned 200 OK',
+  );
 
   const pat2Reminder = (pat2NotifsRes.body.data || []).find(
-    (n) => n.appointmentId === waveBooking.body.id && n.type === 'APPOINTMENT_REMINDER',
+    (n) =>
+      n.appointmentId === waveBooking.body.id &&
+      n.type === 'APPOINTMENT_REMINDER',
   );
-  assert(!!pat2Reminder, 'WAVE appointment reminder notification found for Patient 2');
+  assert(
+    !!pat2Reminder,
+    'WAVE appointment reminder notification found for Patient 2',
+  );
   assert(
     pat2Reminder.message.includes('Dr. John Doe') &&
       !pat2Reminder.message.includes('Dr. Dr.') &&
@@ -292,24 +393,44 @@ async function runReminderSuite() {
   );
 
   const cancelledReminder = (pat1NotifsRes.body.data || []).find(
-    (n) => n.appointmentId === cancelBooking.body.id && n.type === 'APPOINTMENT_REMINDER',
+    (n) =>
+      n.appointmentId === cancelBooking.body.id &&
+      n.type === 'APPOINTMENT_REMINDER',
   );
-  assert(!cancelledReminder, 'Cancelled appointment was correctly EXCLUDED from receiving a reminder');
+  assert(
+    !cancelledReminder,
+    'Cancelled appointment was correctly EXCLUDED from receiving a reminder',
+  );
 
   // 7. 50-Way Parallel Concurrency & Idempotency Stress Test
-  console.log('\n7. Executing 50-WAY SIMULTANEOUS CONCURRENT REMINDER TRIGGER STRESS TEST...');
+  console.log(
+    '\n7. Executing 50-WAY SIMULTANEOUS CONCURRENT REMINDER TRIGGER STRESS TEST...',
+  );
   const concurrentTriggers = Array.from({ length: 50 }, () =>
     request('POST', '/notifications/trigger-reminders', {}, doc1Token),
   );
 
   const results = await Promise.all(concurrentTriggers);
-  const successCount = results.filter((r) => r.status === 200 || r.status === 201).length;
+  const successCount = results.filter(
+    (r) => r.status === 200 || r.status === 201,
+  ).length;
   const errorCount = results.filter((r) => r.status >= 500).length;
 
-  assert(successCount === 50, `All 50 concurrent requests completed cleanly without HTTP failures (${successCount}/50)`);
-  assert(errorCount === 0, 'Zero HTTP 5xx server errors during 50-way concurrent execution');
+  assert(
+    successCount === 50,
+    `All 50 concurrent requests completed cleanly without HTTP failures (${successCount}/50)`,
+  );
+  assert(
+    errorCount === 0,
+    'Zero HTTP 5xx server errors during 50-way concurrent execution',
+  );
 
-  const pat1NotifsFinal = await request('GET', '/notifications', null, pat1Token);
+  const pat1NotifsFinal = await request(
+    'GET',
+    '/notifications',
+    null,
+    pat1Token,
+  );
   assert(
     pat1NotifsFinal.body.totalCount === pat1NotifsRes.body.totalCount,
     `Total notification count preserved (${pat1NotifsFinal.body.totalCount}) - Zero duplicate database rows created!`,

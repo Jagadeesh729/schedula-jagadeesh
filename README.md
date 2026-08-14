@@ -22,12 +22,14 @@
 ## 📌 Problem Statement & Core Value Proposition
 
 Healthcare scheduling systems face severe concurrency and operational challenges:
+
 1. **Double-Booking Under High Concurrency**: Multi-patient booking spikes on popular doctor availability slots often result in race conditions.
 2. **Rigid Strategy Support**: Traditional systems force doctors into fixed time slots, neglecting high-throughput walk-in wave windows.
 3. **Rescheduling Collisions**: Last-minute appointment shifts lead to corrupted slot availability or orphaned tokens.
 4. **Availability Shrink Disruptions**: When doctors shrink their working hours or delete availability windows, existing booked appointments get cancelled or lost without audit trails.
 
 **Schedula** solves these challenges through:
+
 - **Polymorphic Scheduling Engine**: Dynamic support for **STREAM** (individual fixed-duration slots + buffer time) and **WAVE** (max-patient token allocation windows).
 - **Elastic Availability Engine (Shrink & Expand)**: Automatically detects appointments affected when a doctor shrinks availability hours or removes working days, auto-rescheduling them to the next available future slot/window with full audit metadata while preserving transaction safety (`QueryRunner`).
 - **Pessimistic Transactional Row Locks**: Acquires TypeORM `pessimistic_write` locks during appointment modification, eliminating race conditions.
@@ -210,22 +212,22 @@ Schedula utilizes PostgreSQL **Partial Unique Indexes** to enforce slot uniquene
 
 ```sql
 -- STREAM Strategy: Prevents double-booking the same exact slot for active appointments
-CREATE UNIQUE INDEX idx_stream_slot_unique 
-ON appointments (doctor_id, date, slot_start_time) 
+CREATE UNIQUE INDEX idx_stream_slot_unique
+ON appointments (doctor_id, date, slot_start_time)
 WHERE status = 'CONFIRMED' AND slot_start_time IS NOT NULL;
 
 -- WAVE Strategy: Enforces single patient per window and unique token allocation
-CREATE UNIQUE INDEX idx_wave_window_patient_unique 
-ON appointments (doctor_id, date, window, patient_id) 
+CREATE UNIQUE INDEX idx_wave_window_patient_unique
+ON appointments (doctor_id, date, window, patient_id)
 WHERE status = 'CONFIRMED' AND window IS NOT NULL AND patient_id IS NOT NULL;
 
-CREATE UNIQUE INDEX idx_wave_window_token_unique 
-ON appointments (doctor_id, date, window, token) 
+CREATE UNIQUE INDEX idx_wave_window_token_unique
+ON appointments (doctor_id, date, window, token)
 WHERE status = 'CONFIRMED' AND window IS NOT NULL AND token IS NOT NULL;
 
 -- Event-Based Notifications: Enforces DB-level event deduplication
-CREATE UNIQUE INDEX idx_notification_event_unique 
-ON notifications (event_id) 
+CREATE UNIQUE INDEX idx_notification_event_unique
+ON notifications (event_id)
 WHERE event_id IS NOT NULL;
 ```
 
@@ -233,36 +235,40 @@ WHERE event_id IS NOT NULL;
 
 ## 🛠️ Technology Stack & Dependencies
 
-| Layer | Component | Version / Library |
-| :--- | :--- | :--- |
-| **Core Framework** | NestJS | `v11.0.1` |
-| **Language** | TypeScript | `v5.7.3` (`tsc --noEmit` clean) |
-| **Database Engine**| PostgreSQL | `v17` (Neon Serverless PostgreSQL over TLS) |
-| **ORM** | TypeORM | `v1.1.0` (Code-first migrations enabled) |
-| **Authentication** | Passport.js + JWT | `@nestjs/jwt^11.0.0`, `passport-jwt^4.0.1` |
-| **Password Security**| Bcrypt | `bcrypt^5.1.1` (Salt rounds: 10) |
-| **Validation** | Class Validator | `class-validator^0.14.1`, `class-transformer^0.5.1` |
+| Layer                 | Component         | Version / Library                                   |
+| :-------------------- | :---------------- | :-------------------------------------------------- |
+| **Core Framework**    | NestJS            | `v11.0.1`                                           |
+| **Language**          | TypeScript        | `v5.7.3` (`tsc --noEmit` clean)                     |
+| **Database Engine**   | PostgreSQL        | `v17` (Neon Serverless PostgreSQL over TLS)         |
+| **ORM**               | TypeORM           | `v1.1.0` (Code-first migrations enabled)            |
+| **Authentication**    | Passport.js + JWT | `@nestjs/jwt^11.0.0`, `passport-jwt^4.0.1`          |
+| **Password Security** | Bcrypt            | `bcrypt^5.1.1` (Salt rounds: 10)                    |
+| **Validation**        | Class Validator   | `class-validator^0.14.1`, `class-transformer^0.5.1` |
 
 ---
 
 ## 🔑 Key Features & Subsystems
 
 ### 1. Elastic Scheduling (Shrink & Expand Availability) Engine
+
 - **Expansion**: Expanding availability hours or adding working days preserves all existing appointments while making newly created time slots/windows immediately bookable.
 - **Shrink Auto-Rescheduling**: Shrinking availability hours or deleting recurring slots automatically detects affected active appointments and reschedules them to the next available recurring date/time for that doctor.
 - **Audit Metadata Persistence**: Retains `previousDate`, `previousSlotStartTime`, `previousWindow`, `previousToken`, `isAutoRescheduled: true`, and `rescheduledReason: 'ELASTIC_AVAILABILITY_SHRINK'`.
 - **Atomic Rollback Guarantee**: If any affected appointment cannot find a valid future slot within 30 days, the transaction rolls back (`queryRunner.rollbackTransaction()`), returning `400 Bad Request` to preserve data integrity.
 
 ### 2. STREAM & WAVE Scheduling Strategies
+
 - **STREAM**: Generates discrete time slots (e.g. 15-minute appointment slots with 5-minute buffer intervals) based on doctor operational windows.
 - **WAVE**: Assigns sequential token numbers (Token #1, Token #2, etc.) to patients booking within a fixed time window up to a maximum patient capacity (e.g. max 5 patients per 1-hour window).
 
 ### 3. Appointment Rescheduling Engine & Cutoff Guard
+
 - **Pre-Start Cutoff Rule**: Rejects rescheduling requests attempted within 30 minutes of appointment start time (`400 Bad Request`).
 - **Atomic Slot Swap**: Releases old slot reservation and acquires new slot inside a single TypeORM transaction with `pessimistic_write` row locks.
 - **Conflict Resolution**: If the target slot is unavailable, scans the upcoming 14 days and returns `409 Conflict` with `suggestedNextAvailable`.
 
 ### 4. Automated Appointment Reminder System (NestJS Cron Jobs)
+
 - **Background Cron Scheduler**: `@Cron(CronExpression.EVERY_MINUTE)` scans `CONFIRMED` upcoming appointments within the configured reminder window (`REMINDER_WINDOW_MINUTES`, default 48h).
 - **STREAM & WAVE Content Formatting**: Formats exact time for STREAM appointments and reporting time + token numbers for WAVE appointments.
 - **Idempotency & Deduplication**: Employs deterministic `eventId = reminder_${appointment.id}` coupled with PostgreSQL partial unique index `idx_notification_event_unique` to prevent duplicate reminders.
@@ -272,52 +278,54 @@ WHERE event_id IS NOT NULL;
 
 ## 📑 Complete API Endpoint Table (34 Endpoints)
 
-| Method | Path Alias 1 | Path Alias 2 | Auth Required | Description |
-| :--- | :--- | :--- | :---: | :--- |
-| `POST` | `/auth/signup` | — | No | Register new Doctor or Patient account |
-| `POST` | `/auth/login` | — | No | Authenticate user & receive JWT Bearer token |
-| `POST` | `/doctor/profile` | — | Yes (`DOCTOR`) | Create or update Doctor profile |
-| `GET` | `/doctor/profile` | — | Yes (`DOCTOR`) | Get authenticated Doctor profile |
-| `PATCH`| `/doctor/profile` | — | Yes (`DOCTOR`) | Update authenticated Doctor profile |
-| `POST` | `/patient/profile` | — | Yes (`PATIENT`) | Create or update Patient profile |
-| `GET` | `/patient/profile` | — | Yes (`PATIENT`) | Get authenticated Patient profile |
-| `PATCH`| `/patient/profile` | — | Yes (`PATIENT`) | Update authenticated Patient profile |
-| `POST` | `/doctor/availability` | — | Yes (`DOCTOR`) | Create recurring weekly availability slot |
-| `GET` | `/doctor/availability` | — | Yes (`DOCTOR`) | List recurring availability slots |
-| `PATCH`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Update availability (Elastic Shrink/Expand Engine) |
-| `GET`  | `/doctor/availability/:id/shrink-preview` | — | Yes (`DOCTOR`) | Dry-run preview of affected appointments for shrink |
-| `DELETE`| `/doctor/availability/:id` | — | Yes (`DOCTOR`) | Delete availability (Elastic Shrink Auto-Reschedule) |
-| `POST` | `/doctor/availability/override` | — | Yes (`DOCTOR`) | Set specific date override (e.g. Day Off) |
-| `GET` | `/doctor/availability/date` | — | Yes | Query available slots for a doctor on date |
-| `POST` | `/doctors/:doctorId/scheduling` | `/doctor/:doctorId/scheduling` | Yes (`ADMIN` / `DOCTOR`) | Setup STREAM or WAVE scheduling strategy |
-| `GET` | `/doctors/:doctorId/scheduling` | `/doctor/:doctorId/scheduling` | Yes | Get doctor scheduling strategy config |
-| `GET` | `/doctors/:doctorId/availability/windows` | `/doctor/:doctorId/availability/windows` | Yes | Get available slot windows for doctor |
-| `POST` | `/appointment/book` | `/appointments/book` | Yes (`PATIENT`) | Book STREAM slot or WAVE token appointment |
-| `GET` | `/appointment/my-appointments` | `/appointments/my-appointments` | Yes (`PATIENT`) | List authenticated patient's appointments |
-| `PATCH`| `/appointment/:id/cancel` | `/appointments/:id/cancel` | Yes (`PATIENT`) | Cancel appointment with IDOR check |
-| `PATCH`| `/appointment/:id/reschedule` | `/appointments/:id/reschedule` | Yes (`PATIENT`) | Reschedule appointment (30-min cutoff) |
-| `GET` | `/doctor/appointments` | — | Yes (`DOCTOR`) | List doctor's appointments by date range |
-| `GET` | `/notifications` | `/notification` | Yes (`PATIENT`) | Get patient's notifications (latest first) |
-| `PATCH`| `/notifications/:id/read` | `/notification/:id/read` | Yes (`PATIENT`) | Mark notification as read |
-| `PATCH`| `/notifications/read-all` | `/notification/read-all` | Yes (`PATIENT`) | Mark all unread notifications as read |
-| `DELETE`| `/notifications/:id` | `/notification/:id` | Yes (`PATIENT`) | Delete a specific notification |
-| `DELETE`| `/notifications` | `/notification` | Yes (`PATIENT`) | Delete all notifications for the patient |
-| `POST` | `/notifications/trigger-reminders` | — | Yes (`DOCTOR` / `ADMIN`) | Manually trigger automated appointment reminders |
-| `GET` | `/health` | — | No | Comprehensive service & database latency health check |
-| `GET` | `/readiness` | — | No | Kubernetes readiness probe |
-| `GET` | `/liveness` | — | No | Kubernetes liveness probe |
-| `GET` | `/metrics` | — | No | Prometheus telemetry metrics endpoint |
-| `GET` | `/api-docs` | — | No | Interactive OpenAPI / Swagger UI documentation |
+| Method   | Path Alias 1                              | Path Alias 2                             |      Auth Required       | Description                                           |
+| :------- | :---------------------------------------- | :--------------------------------------- | :----------------------: | :---------------------------------------------------- |
+| `POST`   | `/auth/signup`                            | —                                        |            No            | Register new Doctor or Patient account                |
+| `POST`   | `/auth/login`                             | —                                        |            No            | Authenticate user & receive JWT Bearer token          |
+| `POST`   | `/doctor/profile`                         | —                                        |      Yes (`DOCTOR`)      | Create or update Doctor profile                       |
+| `GET`    | `/doctor/profile`                         | —                                        |      Yes (`DOCTOR`)      | Get authenticated Doctor profile                      |
+| `PATCH`  | `/doctor/profile`                         | —                                        |      Yes (`DOCTOR`)      | Update authenticated Doctor profile                   |
+| `POST`   | `/patient/profile`                        | —                                        |     Yes (`PATIENT`)      | Create or update Patient profile                      |
+| `GET`    | `/patient/profile`                        | —                                        |     Yes (`PATIENT`)      | Get authenticated Patient profile                     |
+| `PATCH`  | `/patient/profile`                        | —                                        |     Yes (`PATIENT`)      | Update authenticated Patient profile                  |
+| `POST`   | `/doctor/availability`                    | —                                        |      Yes (`DOCTOR`)      | Create recurring weekly availability slot             |
+| `GET`    | `/doctor/availability`                    | —                                        |      Yes (`DOCTOR`)      | List recurring availability slots                     |
+| `PATCH`  | `/doctor/availability/:id`                | —                                        |      Yes (`DOCTOR`)      | Update availability (Elastic Shrink/Expand Engine)    |
+| `GET`    | `/doctor/availability/:id/shrink-preview` | —                                        |      Yes (`DOCTOR`)      | Dry-run preview of affected appointments for shrink   |
+| `DELETE` | `/doctor/availability/:id`                | —                                        |      Yes (`DOCTOR`)      | Delete availability (Elastic Shrink Auto-Reschedule)  |
+| `POST`   | `/doctor/availability/override`           | —                                        |      Yes (`DOCTOR`)      | Set specific date override (e.g. Day Off)             |
+| `GET`    | `/doctor/availability/date`               | —                                        |           Yes            | Query available slots for a doctor on date            |
+| `POST`   | `/doctors/:doctorId/scheduling`           | `/doctor/:doctorId/scheduling`           | Yes (`ADMIN` / `DOCTOR`) | Setup STREAM or WAVE scheduling strategy              |
+| `GET`    | `/doctors/:doctorId/scheduling`           | `/doctor/:doctorId/scheduling`           |           Yes            | Get doctor scheduling strategy config                 |
+| `GET`    | `/doctors/:doctorId/availability/windows` | `/doctor/:doctorId/availability/windows` |           Yes            | Get available slot windows for doctor                 |
+| `POST`   | `/appointment/book`                       | `/appointments/book`                     |     Yes (`PATIENT`)      | Book STREAM slot or WAVE token appointment            |
+| `GET`    | `/appointment/my-appointments`            | `/appointments/my-appointments`          |     Yes (`PATIENT`)      | List authenticated patient's appointments             |
+| `PATCH`  | `/appointment/:id/cancel`                 | `/appointments/:id/cancel`               |     Yes (`PATIENT`)      | Cancel appointment with IDOR check                    |
+| `PATCH`  | `/appointment/:id/reschedule`             | `/appointments/:id/reschedule`           |     Yes (`PATIENT`)      | Reschedule appointment (30-min cutoff)                |
+| `GET`    | `/doctor/appointments`                    | —                                        |      Yes (`DOCTOR`)      | List doctor's appointments by date range              |
+| `GET`    | `/notifications`                          | `/notification`                          |     Yes (`PATIENT`)      | Get patient's notifications (latest first)            |
+| `PATCH`  | `/notifications/:id/read`                 | `/notification/:id/read`                 |     Yes (`PATIENT`)      | Mark notification as read                             |
+| `PATCH`  | `/notifications/read-all`                 | `/notification/read-all`                 |     Yes (`PATIENT`)      | Mark all unread notifications as read                 |
+| `DELETE` | `/notifications/:id`                      | `/notification/:id`                      |     Yes (`PATIENT`)      | Delete a specific notification                        |
+| `DELETE` | `/notifications`                          | `/notification`                          |     Yes (`PATIENT`)      | Delete all notifications for the patient              |
+| `POST`   | `/notifications/trigger-reminders`        | —                                        | Yes (`DOCTOR` / `ADMIN`) | Manually trigger automated appointment reminders      |
+| `GET`    | `/health`                                 | —                                        |            No            | Comprehensive service & database latency health check |
+| `GET`    | `/readiness`                              | —                                        |            No            | Kubernetes readiness probe                            |
+| `GET`    | `/liveness`                               | —                                        |            No            | Kubernetes liveness probe                             |
+| `GET`    | `/metrics`                                | —                                        |            No            | Prometheus telemetry metrics endpoint                 |
+| `GET`    | `/api-docs`                               | —                                        |            No            | Interactive OpenAPI / Swagger UI documentation        |
 
 ---
 
 ## ⚡ Quick Start & Local Setup Guide
 
 ### Prerequisites
+
 - Node.js `v20.18.0` or higher
 - PostgreSQL instance running locally or a Neon DB cloud connection string
 
 ### 1. Installation
+
 ```bash
 git clone https://github.com/Jagadeesh729/schedula-jagadeesh.git
 cd schedula-jagadeesh
@@ -325,7 +333,9 @@ npm install
 ```
 
 ### 2. Environment Variables (`.env`)
+
 Create a `.env` file in the project root:
+
 ```env
 PORT=3000
 DATABASE_HOST=localhost
@@ -338,12 +348,14 @@ JWT_SECRET=your_super_secret_jwt_key_here
 ```
 
 ### 3. Database Migration Execution
+
 ```bash
 # Run TypeORM migrations to set up tables, partial indexes, and elastic metadata
 npm run migration:run
 ```
 
 ### 4. Build & Run Application
+
 ```bash
 # Development mode
 npm run start:dev

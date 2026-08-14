@@ -67,7 +67,12 @@ async function runReschedulingTests() {
   const password = 'Password123!';
 
   // 1. Register Auth & Profiles
-  const docToken = await registerUser(docEmail, password, 'DOCTOR', 'Dr. Reschedule');
+  const docToken = await registerUser(
+    docEmail,
+    password,
+    'DOCTOR',
+    'Dr. Reschedule',
+  );
   const docProfRes = await request('/doctor/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
@@ -83,7 +88,12 @@ async function runReschedulingTests() {
   });
   const doctorId = docProfRes.data?.id;
 
-  const pat1Token = await registerUser(pat1Email, password, 'PATIENT', 'Patient Alpha');
+  const pat1Token = await registerUser(
+    pat1Email,
+    password,
+    'PATIENT',
+    'Patient Alpha',
+  );
   await request('/patient/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${pat1Token}` },
@@ -96,7 +106,12 @@ async function runReschedulingTests() {
     }),
   });
 
-  const pat2Token = await registerUser(pat2Email, password, 'PATIENT', 'Patient Beta');
+  const pat2Token = await registerUser(
+    pat2Email,
+    password,
+    'PATIENT',
+    'Patient Beta',
+  );
   await request('/patient/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${pat2Token}` },
@@ -113,7 +128,11 @@ async function runReschedulingTests() {
   await request('/doctor/availability', {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
-    body: JSON.stringify({ weekday: 'Monday', startTime: '10:00', endTime: '11:00' }),
+    body: JSON.stringify({
+      weekday: 'Monday',
+      startTime: '10:00',
+      endTime: '11:00',
+    }),
   });
 
   const testDate1 = getNextMonday(1); // Future Monday week 1
@@ -124,62 +143,119 @@ async function runReschedulingTests() {
   await request(`/doctors/${doctorId}/scheduling`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${docToken}` },
-    body: JSON.stringify({ schedulingType: 'STREAM', slotDuration: 15, bufferTime: 5 }),
+    body: JSON.stringify({
+      schedulingType: 'STREAM',
+      slotDuration: 15,
+      bufferTime: 5,
+    }),
   });
 
   // Book STREAM Slot 1 (10:00-10:15) for Patient 1
   const bookStreamRes = await request('/appointment', {
     method: 'POST',
     headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ doctorId, date: testDate1, startTime: '10:00', endTime: '10:15' }),
+    body: JSON.stringify({
+      doctorId,
+      date: testDate1,
+      startTime: '10:00',
+      endTime: '10:15',
+    }),
   });
-  assert(bookStreamRes.status === 201, 'Patient 1 books STREAM slot 10:00-10:15 (201)', bookStreamRes);
-  const streamAppId = bookStreamRes.data?.id || bookStreamRes.data?.appointmentId;
+  assert(
+    bookStreamRes.status === 201,
+    'Patient 1 books STREAM slot 10:00-10:15 (201)',
+    bookStreamRes,
+  );
+  const streamAppId =
+    bookStreamRes.data?.id || bookStreamRes.data?.appointmentId;
 
   // Book STREAM Slot 2 (10:20-10:35) for Patient 2 (Occupied slot)
   const bookStream2Res = await request('/appointment', {
     method: 'POST',
     headers: { Authorization: `Bearer ${pat2Token}` },
-    body: JSON.stringify({ doctorId, date: testDate1, startTime: '10:20', endTime: '10:35' }),
-  });
-  assert(bookStream2Res.status === 201, 'Patient 2 books STREAM slot 10:20-10:35 (201)', bookStream2Res);
-
-  // Test 1: Reject Unauthorized Reschedule (Patient 2 tries to reschedule Patient 1's appointment -> 403)
-  const unauthResched = await request(`/appointment/${streamAppId}/reschedule`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat2Token}` },
-    body: JSON.stringify({ date: testDate1, slot: { startTime: '10:40', endTime: '10:55' } }),
-  });
-  assert(unauthResched.status === 403, 'PATCH /appointment/:id/reschedule blocks unauthorized patient (403)', unauthResched);
-
-  // Test 2: Reject Rescheduling to Same Slot/Time (400)
-  const sameSlotResched = await request(`/appointment/${streamAppId}/reschedule`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ date: testDate1, slot: { startTime: '10:00', endTime: '10:15' } }),
-  });
-  assert(sameSlotResched.status === 400, 'PATCH /appointment/:id/reschedule rejects same slot/time (400)', sameSlotResched);
-
-  // Test 3: Reject Rescheduling to Already Booked Slot & Suggest Next Available (409 Conflict with suggestedNextAvailable)
-  const bookedSlotResched = await request(`/appointment/${streamAppId}/reschedule`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ date: testDate1, slot: { startTime: '10:20', endTime: '10:35' } }),
+    body: JSON.stringify({
+      doctorId,
+      date: testDate1,
+      startTime: '10:20',
+      endTime: '10:35',
+    }),
   });
   assert(
-    bookedSlotResched.status === 409 && Boolean(bookedSlotResched.data?.suggestedNextAvailable),
+    bookStream2Res.status === 201,
+    'Patient 2 books STREAM slot 10:20-10:35 (201)',
+    bookStream2Res,
+  );
+
+  // Test 1: Reject Unauthorized Reschedule (Patient 2 tries to reschedule Patient 1's appointment -> 403)
+  const unauthResched = await request(
+    `/appointment/${streamAppId}/reschedule`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat2Token}` },
+      body: JSON.stringify({
+        date: testDate1,
+        slot: { startTime: '10:40', endTime: '10:55' },
+      }),
+    },
+  );
+  assert(
+    unauthResched.status === 403,
+    'PATCH /appointment/:id/reschedule blocks unauthorized patient (403)',
+    unauthResched,
+  );
+
+  // Test 2: Reject Rescheduling to Same Slot/Time (400)
+  const sameSlotResched = await request(
+    `/appointment/${streamAppId}/reschedule`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat1Token}` },
+      body: JSON.stringify({
+        date: testDate1,
+        slot: { startTime: '10:00', endTime: '10:15' },
+      }),
+    },
+  );
+  assert(
+    sameSlotResched.status === 400,
+    'PATCH /appointment/:id/reschedule rejects same slot/time (400)',
+    sameSlotResched,
+  );
+
+  // Test 3: Reject Rescheduling to Already Booked Slot & Suggest Next Available (409 Conflict with suggestedNextAvailable)
+  const bookedSlotResched = await request(
+    `/appointment/${streamAppId}/reschedule`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat1Token}` },
+      body: JSON.stringify({
+        date: testDate1,
+        slot: { startTime: '10:20', endTime: '10:35' },
+      }),
+    },
+  );
+  assert(
+    bookedSlotResched.status === 409 &&
+      Boolean(bookedSlotResched.data?.suggestedNextAvailable),
     'PATCH /appointment/:id/reschedule rejects booked slot and returns suggestedNextAvailable (409)',
     bookedSlotResched,
   );
 
   // Test 4: Successful STREAM Reschedule (Patient 1 reschedules 10:00-10:15 -> 10:40-10:55)
-  const validStreamResched = await request(`/appointment/${streamAppId}/reschedule`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ date: testDate1, slot: { startTime: '10:40', endTime: '10:55' } }),
-  });
+  const validStreamResched = await request(
+    `/appointment/${streamAppId}/reschedule`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat1Token}` },
+      body: JSON.stringify({
+        date: testDate1,
+        slot: { startTime: '10:40', endTime: '10:55' },
+      }),
+    },
+  );
   assert(
-    validStreamResched.status === 200 && validStreamResched.data?.slotStartTime === '10:40',
+    validStreamResched.status === 200 &&
+      validStreamResched.data?.slotStartTime === '10:40',
     'PATCH /appointment/:id/reschedule moves STREAM appointment to new slot (200 OK)',
     validStreamResched,
   );
@@ -198,7 +274,11 @@ async function runReschedulingTests() {
     headers: { Authorization: `Bearer ${pat1Token}` },
     body: JSON.stringify({ doctorId, date: testDate1, window: '10:00-11:00' }),
   });
-  assert(bookWaveRes1.status === 201 && bookWaveRes1.data?.token === 1, 'Patient 1 books WAVE window (Token 1)', bookWaveRes1);
+  assert(
+    bookWaveRes1.status === 201 && bookWaveRes1.data?.token === 1,
+    'Patient 1 books WAVE window (Token 1)',
+    bookWaveRes1,
+  );
   const waveAppId1 = bookWaveRes1.data?.id || bookWaveRes1.data?.appointmentId;
 
   // Patient 2 books WAVE Window on testDate1 (Token 2 assigned -> Window Full)
@@ -207,7 +287,11 @@ async function runReschedulingTests() {
     headers: { Authorization: `Bearer ${pat2Token}` },
     body: JSON.stringify({ doctorId, date: testDate1, window: '10:00-11:00' }),
   });
-  assert(bookWaveRes2.status === 201 && bookWaveRes2.data?.token === 2, 'Patient 2 books WAVE window (Token 2 -> Wave Full)', bookWaveRes2);
+  assert(
+    bookWaveRes2.status === 201 && bookWaveRes2.data?.token === 2,
+    'Patient 2 books WAVE window (Token 2 -> Wave Full)',
+    bookWaveRes2,
+  );
 
   // Test 5: Reschedule WAVE to future date testDate2 (Releases token on testDate1, assigns Token 1 on testDate2)
   const waveResched = await request(`/appointment/${waveAppId1}/reschedule`, {
@@ -216,7 +300,9 @@ async function runReschedulingTests() {
     body: JSON.stringify({ date: testDate2, window: '10:00-11:00' }),
   });
   assert(
-    waveResched.status === 200 && waveResched.data?.date === testDate2 && waveResched.data?.token === 1,
+    waveResched.status === 200 &&
+      waveResched.data?.date === testDate2 &&
+      waveResched.data?.token === 1,
     'PATCH /appointment/:id/reschedule moves WAVE appointment to new date & assigns token 1 (200 OK)',
     waveResched,
   );
@@ -227,29 +313,53 @@ async function runReschedulingTests() {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${pat1Token}` },
   });
-  const reschedCancelled = await request(`/appointment/${streamAppId}/reschedule`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ date: testDate2, slot: { startTime: '10:00', endTime: '10:15' } }),
-  });
-  assert(reschedCancelled.status === 400, 'PATCH /appointment/:id/reschedule rejects cancelled appointment (400)', reschedCancelled);
+  const reschedCancelled = await request(
+    `/appointment/${streamAppId}/reschedule`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat1Token}` },
+      body: JSON.stringify({
+        date: testDate2,
+        slot: { startTime: '10:00', endTime: '10:15' },
+      }),
+    },
+  );
+  assert(
+    reschedCancelled.status === 400,
+    'PATCH /appointment/:id/reschedule rejects cancelled appointment (400)',
+    reschedCancelled,
+  );
 
   // Test 7: Reject invalid appointment UUID -> 400 Bad Request
-  const invalidUuidResched = await request('/appointment/invalid-uuid/reschedule', {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ date: testDate1, window: '10:00-11:00' }),
-  });
-  assert(invalidUuidResched.status === 400, 'PATCH /appointment/:id/reschedule rejects invalid UUID via ParseUUIDPipe (400)', invalidUuidResched);
+  const invalidUuidResched = await request(
+    '/appointment/invalid-uuid/reschedule',
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat1Token}` },
+      body: JSON.stringify({ date: testDate1, window: '10:00-11:00' }),
+    },
+  );
+  assert(
+    invalidUuidResched.status === 400,
+    'PATCH /appointment/:id/reschedule rejects invalid UUID via ParseUUIDPipe (400)',
+    invalidUuidResched,
+  );
 
   // Test 8: Reject non-existent appointment -> 404 Not Found
   const fakeUuid = '00000000-0000-0000-0000-000000000000';
-  const nonExistentResched = await request(`/appointment/${fakeUuid}/reschedule`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pat1Token}` },
-    body: JSON.stringify({ date: testDate1, window: '10:00-11:00' }),
-  });
-  assert(nonExistentResched.status === 404, 'PATCH /appointment/:id/reschedule rejects non-existent appointment (404)', nonExistentResched);
+  const nonExistentResched = await request(
+    `/appointment/${fakeUuid}/reschedule`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pat1Token}` },
+      body: JSON.stringify({ date: testDate1, window: '10:00-11:00' }),
+    },
+  );
+  assert(
+    nonExistentResched.status === 404,
+    'PATCH /appointment/:id/reschedule rejects non-existent appointment (404)',
+    nonExistentResched,
+  );
 
   console.log('\n===========================================================');
   console.log(`  RESULTS: ${passed} Passed | ${failed} Failed`);

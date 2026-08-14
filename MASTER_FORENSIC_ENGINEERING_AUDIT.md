@@ -3,7 +3,7 @@
 **Repository**: [`schedula-jagadeesh`](https://github.com/Jagadeesh729/schedula-jagadeesh.git)  
 **Author**: Kunda Jagadeesh ([@Jagadeesh729](https://github.com/Jagadeesh729))  
 **Live Deployment API**: [`https://schedula-backend-45oj.onrender.com/`](https://schedula-backend-45oj.onrender.com/)  
-**Target Process**: `http://127.0.0.1:3000` (NestJS v11 engine connected to PostgreSQL v17) `[VERIFIED]`  
+**Target Process**: `http://127.0.0.1:3000` (NestJS v11 engine connected to PostgreSQL v17) `[VERIFIED]`
 
 ---
 
@@ -15,6 +15,7 @@
 - **Working Tree Status**: Clean (0 uncommitted / 0 staged changes) `[VERIFIED]`
 
 ### Environment Version Matrix
+
 - **Node.js Runtime**: `v24.18.0` `[VERIFIED]`
 - **npm Package Manager**: `11.16.0` `[VERIFIED]`
 - **TypeScript Compiler**: `v5.9.3` `[VERIFIED]`
@@ -138,6 +139,7 @@ tsconfig.json
 ## 📦 3. Dependency Forensic Audit & Modifications
 
 ### Audit of Direct Dependencies
+
 - **Core Framework**: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `reflect-metadata`, `rxjs`. `[REQUIRED / VERIFIED]`
 - **Authentication**: `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcrypt`. `[REQUIRED / VERIFIED]`
 - **Database & Persistence**: `@nestjs/typeorm`, `typeorm`, `pg`. `[REQUIRED / VERIFIED]`
@@ -147,6 +149,7 @@ tsconfig.json
 - **Documentation & Telemetry**: `@nestjs/swagger`, `swagger-ui-express`. `[REQUIRED / VERIFIED]`
 
 ### Items Removed / Fixed & Rationale
+
 1. **Redundant Route Alias Removed**: Removed `POST /notification/trigger-reminders` duplicate alias. Retained clean, canonical `POST /notifications/trigger-reminders`.
 2. **Privilege Escalation Fixed**: Narrowed `POST /notifications/trigger-reminders` authorization from `@Roles('DOCTOR', 'ADMIN', 'PATIENT')` to `@Roles('DOCTOR', 'ADMIN')`. Patient requests now return `403 Forbidden` `[VERIFIED]`.
 3. **Double "Dr. Dr." Formatting Fix**: Hardened `ReminderService` message construction to detect existing `"Dr."` or `"Dr "` prefixes, outputting clean formatting (`"Dr. Sarah Connor"` instead of `"Dr. Dr. Sarah Connor"`) `[VERIFIED]`.
@@ -170,6 +173,7 @@ tsconfig.json
 Tested against live **PostgreSQL v17 engine** (Neon Cloud DB over TLS).
 
 ### Database Partial Unique Indexes:
+
 1. `idx_stream_slot_unique`: `(doctor_id, date, slot_start_time)` `WHERE status = 'CONFIRMED'`.
 2. `idx_wave_window_patient_unique`: `(doctor_id, date, window, patient_id)` `WHERE status = 'CONFIRMED'`.
 3. `idx_wave_window_token_unique`: `(doctor_id, date, window, token)` `WHERE status = 'CONFIRMED'`.
@@ -184,9 +188,9 @@ Tested against live **PostgreSQL v17 engine** (Neon Cloud DB over TLS).
 - **Scheduler Registration**: `@Cron(CronExpression.EVERY_MINUTE)` background process running inside `ReminderService`.
 - **Configurable Reminder Window**: Configurable via `REMINDER_WINDOW_MINUTES` env variable (default: 2880 minutes / 48 hours).
 - **STREAM Reminder Content**:
-  > *"Reminder: You have an appointment with Dr. Sarah Connor on 2026-08-14 at 10:00."*
+  > _"Reminder: You have an appointment with Dr. Sarah Connor on 2026-08-14 at 10:00."_
 - **WAVE Reminder Content**:
-  > *"Reminder: You have an appointment with Dr. John Doe today. Reporting Time: 11:00. Token Number: 1"*
+  > _"Reminder: You have an appointment with Dr. John Doe today. Reporting Time: 11:00. Token Number: 1"_
 - **Exclusion Filters**: Excludes `CANCELLED`, `COMPLETED`, past appointments, or missing token/window WAVE records `[VERIFIED]`.
 - **Idempotency Safeguard**: Uses `eventId: reminder_${appointment.id}` coupled with database `idx_notification_event_unique` index. Second trigger pass produces **0 duplicate notifications** `[VERIFIED]`.
 
@@ -195,6 +199,7 @@ Tested against live **PostgreSQL v17 engine** (Neon Cloud DB over TLS).
 ## 📊 7. Concurrency Stress Test Benchmarks
 
 ### A. 50-Way Parallel STREAM Booking Stress Test (`test-concurrency-stress.js`)
+
 - **Total Parallel Requests Fired**: 50 simultaneous HTTP POST calls at exact same slot.
 - **Successful Bookings (HTTP 201)**: **EXACTLY 1** `[VERIFIED]`
 - **Conflict Rejections (HTTP 409)**: **EXACTLY 49** `[VERIFIED]`
@@ -202,6 +207,7 @@ Tested against live **PostgreSQL v17 engine** (Neon Cloud DB over TLS).
 - **P50 / P95 Latency**: 837 ms / 891 ms `[VERIFIED]`
 
 ### B. 50-Way Parallel Reminder Trigger Stress Test (`test-cron-reminder.js`)
+
 - **Total Parallel Requests Fired**: 50 simultaneous HTTP POST calls to `/notifications/trigger-reminders`.
 - **HTTP Success Responses**: **50 / 50 (100%)** `[VERIFIED]`
 - **Server Errors (5xx)**: **0** `[VERIFIED]`
@@ -281,20 +287,20 @@ Total Active Routes: **59 Routes** enumerated via NestJS Reflect metadata scanne
 
 All 10 integration test runners and unit test suites executed with 100% success against PostgreSQL:
 
-| Test Suite File | Domain / Objective | Result |
-| :--- | :--- | :---: |
-| `npm run test` (Jest) | 4 Unit Test Suites (44 Unit Tests) | **44 / 44 PASSED** |
-| `node run-tests.js` | Core Auth, Profiles, Doctor Availability | **PASSED** |
-| `node test-appointment-management.js` | Booking, Cancellation & IDOR Security | **PASSED** |
-| `node test-advanced-scheduling.js` | STREAM & WAVE Strategies, Slot Generation | **PASSED** |
-| `node test-rescheduling-suite.js` | Rescheduling Engine & 30m Cutoff | **PASSED** |
-| `node test-elastic-scheduling.js` | Elastic Availability Shrink Auto-Reschedule Engine | **PASSED** |
-| `node test-edge-cases.js` | Date Boundaries, Overrides & Bad Input | **PASSED** |
-| `node test-db-partial-index.js` | PostgreSQL Partial Unique Index Hard Invariant | **PASSED** |
-| `node test-concurrency-stress.js` | 50-Way Parallel High-Contention Stress Test | **PASSED** |
-| `node test-notification-workflow.js` | Event-Based Notifications & WebSocket Integration | **PASSED** |
-| `node test-cron-reminder.js` | Cron Reminders, Deduplication & 50-Way Stress Test | **PASSED** |
-| **`npm run test:all`** | **Master Integration Suite (All 10 Integration Scripts)** | **10 / 10 PASSED (100%)** |
+| Test Suite File                       | Domain / Objective                                        |          Result           |
+| :------------------------------------ | :-------------------------------------------------------- | :-----------------------: |
+| `npm run test` (Jest)                 | 4 Unit Test Suites (44 Unit Tests)                        |    **44 / 44 PASSED**     |
+| `node run-tests.js`                   | Core Auth, Profiles, Doctor Availability                  |        **PASSED**         |
+| `node test-appointment-management.js` | Booking, Cancellation & IDOR Security                     |        **PASSED**         |
+| `node test-advanced-scheduling.js`    | STREAM & WAVE Strategies, Slot Generation                 |        **PASSED**         |
+| `node test-rescheduling-suite.js`     | Rescheduling Engine & 30m Cutoff                          |        **PASSED**         |
+| `node test-elastic-scheduling.js`     | Elastic Availability Shrink Auto-Reschedule Engine        |        **PASSED**         |
+| `node test-edge-cases.js`             | Date Boundaries, Overrides & Bad Input                    |        **PASSED**         |
+| `node test-db-partial-index.js`       | PostgreSQL Partial Unique Index Hard Invariant            |        **PASSED**         |
+| `node test-concurrency-stress.js`     | 50-Way Parallel High-Contention Stress Test               |        **PASSED**         |
+| `node test-notification-workflow.js`  | Event-Based Notifications & WebSocket Integration         |        **PASSED**         |
+| `node test-cron-reminder.js`          | Cron Reminders, Deduplication & 50-Way Stress Test        |        **PASSED**         |
+| **`npm run test:all`**                | **Master Integration Suite (All 10 Integration Scripts)** | **10 / 10 PASSED (100%)** |
 
 ---
 

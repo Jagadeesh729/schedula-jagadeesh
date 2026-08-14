@@ -79,12 +79,42 @@ async function runAdvancedSchedulingTests() {
 
   // 1. REGISTER USERS
   console.log('══════ 1. SCHEDULING CONFIGURATION TESTS ══════');
-  const doc1Token = await registerUser(doc1Email, 'Password123!', 'DOCTOR', 'Dr. Stream');
-  const doc2Token = await registerUser(doc2Email, 'Password123!', 'DOCTOR', 'Dr. Wave');
-  const pat1Token = await registerUser(pat1Email, 'Password123!', 'PATIENT', 'Patient One');
-  const pat2Token = await registerUser(pat2Email, 'Password123!', 'PATIENT', 'Patient Two');
-  const pat3Token = await registerUser(pat3Email, 'Password123!', 'PATIENT', 'Patient Three');
-  const pat4Token = await registerUser(pat4Email, 'Password123!', 'PATIENT', 'Patient Four');
+  const doc1Token = await registerUser(
+    doc1Email,
+    'Password123!',
+    'DOCTOR',
+    'Dr. Stream',
+  );
+  const doc2Token = await registerUser(
+    doc2Email,
+    'Password123!',
+    'DOCTOR',
+    'Dr. Wave',
+  );
+  const pat1Token = await registerUser(
+    pat1Email,
+    'Password123!',
+    'PATIENT',
+    'Patient One',
+  );
+  const pat2Token = await registerUser(
+    pat2Email,
+    'Password123!',
+    'PATIENT',
+    'Patient Two',
+  );
+  const pat3Token = await registerUser(
+    pat3Email,
+    'Password123!',
+    'PATIENT',
+    'Patient Three',
+  );
+  const pat4Token = await registerUser(
+    pat4Email,
+    'Password123!',
+    'PATIENT',
+    'Patient Four',
+  );
 
   // Create Doctor Profiles
   const doc1ProfileRes = await request('/doctor/profile', {
@@ -121,21 +151,39 @@ async function runAdvancedSchedulingTests() {
   await request('/doctor/availability', {
     method: 'POST',
     headers: { Authorization: `Bearer ${doc1Token}` },
-    body: JSON.stringify({ weekday: 'Monday', startTime: '10:00', endTime: '11:00' }),
+    body: JSON.stringify({
+      weekday: 'Monday',
+      startTime: '10:00',
+      endTime: '11:00',
+    }),
   });
   await request('/doctor/availability', {
     method: 'POST',
     headers: { Authorization: `Bearer ${doc2Token}` },
-    body: JSON.stringify({ weekday: 'Monday', startTime: '10:00', endTime: '11:00' }),
+    body: JSON.stringify({
+      weekday: 'Monday',
+      startTime: '10:00',
+      endTime: '11:00',
+    }),
   });
 
   // T01: Doctor 1 configures STREAM scheduling (slotDuration: 15, bufferTime: 5)
   const cfg1 = await request(`/doctors/${doc1ProfileId}/scheduling`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${doc1Token}` },
-    body: JSON.stringify({ schedulingType: 'STREAM', slotDuration: 15, bufferTime: 5 }),
+    body: JSON.stringify({
+      schedulingType: 'STREAM',
+      slotDuration: 15,
+      bufferTime: 5,
+    }),
   });
-  track(assert(cfg1.status === 201, 'Configure STREAM scheduling returns 201', `actual status: ${cfg1.status}`));
+  track(
+    assert(
+      cfg1.status === 201,
+      'Configure STREAM scheduling returns 201',
+      `actual status: ${cfg1.status}`,
+    ),
+  );
 
   // T02: Reject invalid slotDuration (0) with 400
   const cfgErr1 = await request(`/doctors/${doc1ProfileId}/scheduling`, {
@@ -143,7 +191,13 @@ async function runAdvancedSchedulingTests() {
     headers: { Authorization: `Bearer ${doc1Token}` },
     body: JSON.stringify({ schedulingType: 'STREAM', slotDuration: 0 }),
   });
-  track(assert(cfgErr1.status === 400, 'Reject slotDuration <= 0 with 400 Bad Request', `actual status: ${cfgErr1.status}`));
+  track(
+    assert(
+      cfgErr1.status === 400,
+      'Reject slotDuration <= 0 with 400 Bad Request',
+      `actual status: ${cfgErr1.status}`,
+    ),
+  );
 
   // T03: Doctor 2 configures WAVE scheduling (maxCapacity: 3)
   const cfg2 = await request(`/doctors/${doc2ProfileId}/scheduling`, {
@@ -151,7 +205,13 @@ async function runAdvancedSchedulingTests() {
     headers: { Authorization: `Bearer ${doc2Token}` },
     body: JSON.stringify({ schedulingType: 'WAVE', maxCapacity: 3 }),
   });
-  track(assert(cfg2.status === 201, 'Configure WAVE scheduling returns 201', `actual status: ${cfg2.status}`));
+  track(
+    assert(
+      cfg2.status === 201,
+      'Configure WAVE scheduling returns 201',
+      `actual status: ${cfg2.status}`,
+    ),
+  );
 
   // T04: Reject invalid maxCapacity (0) with 400
   const cfgErr2 = await request(`/doctors/${doc2ProfileId}/scheduling`, {
@@ -159,7 +219,13 @@ async function runAdvancedSchedulingTests() {
     headers: { Authorization: `Bearer ${doc2Token}` },
     body: JSON.stringify({ schedulingType: 'WAVE', maxCapacity: 0 }),
   });
-  track(assert(cfgErr2.status === 400, 'Reject maxCapacity <= 0 with 400 Bad Request', `actual status: ${cfgErr2.status}`));
+  track(
+    assert(
+      cfgErr2.status === 400,
+      'Reject maxCapacity <= 0 with 400 Bad Request',
+      `actual status: ${cfgErr2.status}`,
+    ),
+  );
 
   // T05: Reject doctor configuring another doctor with 403 Forbidden
   const cfgErr3 = await request(`/doctors/${doc2ProfileId}/scheduling`, {
@@ -167,7 +233,13 @@ async function runAdvancedSchedulingTests() {
     headers: { Authorization: `Bearer ${doc1Token}` },
     body: JSON.stringify({ schedulingType: 'STREAM', slotDuration: 15 }),
   });
-  track(assert(cfgErr3.status === 403, 'Reject configuring another doctor with 403 Forbidden', `actual status: ${cfgErr3.status}`));
+  track(
+    assert(
+      cfgErr3.status === 403,
+      'Reject configuring another doctor with 403 Forbidden',
+      `actual status: ${cfgErr3.status}`,
+    ),
+  );
 
   // T06: Reject non-existent doctor with 404 Not Found
   const fakeUuid = '00000000-0000-0000-0000-000000000000';
@@ -176,8 +248,13 @@ async function runAdvancedSchedulingTests() {
     headers: { Authorization: `Bearer ${doc1Token}` },
     body: JSON.stringify({ schedulingType: 'STREAM', slotDuration: 15 }),
   });
-  track(assert(cfgErr4.status === 404, 'Reject non-existent doctor with 404 Not Found', `actual status/data: ${cfgErr4.status}`));
-
+  track(
+    assert(
+      cfgErr4.status === 404,
+      'Reject non-existent doctor with 404 Not Found',
+      `actual status/data: ${cfgErr4.status}`,
+    ),
+  );
 
   function getNextMonday() {
     const d = new Date();
@@ -188,13 +265,18 @@ async function runAdvancedSchedulingTests() {
     return `${year}-${month}-${day}`;
   }
   const testDate = getNextMonday(); // Dynamic upcoming Monday date
-  const availStream = await request(`/doctors/${doc1ProfileId}/availability?date=${testDate}`);
-  track(assert(
-    availStream.status === 200 && Array.isArray(availStream.data) && availStream.data.length === 3,
-    'Fetch STREAM availability generates slots (10:00-10:15, 10:20-10:35, 10:40-10:55)',
-    `actual status/data: ${JSON.stringify(availStream.data)}`
-  ));
-
+  const availStream = await request(
+    `/doctors/${doc1ProfileId}/availability?date=${testDate}`,
+  );
+  track(
+    assert(
+      availStream.status === 200 &&
+        Array.isArray(availStream.data) &&
+        availStream.data.length === 3,
+      'Fetch STREAM availability generates slots (10:00-10:15, 10:20-10:35, 10:40-10:55)',
+      `actual status/data: ${JSON.stringify(availStream.data)}`,
+    ),
+  );
 
   // 3. STREAM BOOKING TESTS
   console.log('\n══════ 3. STREAM APPOINTMENT BOOKING TESTS ══════');
@@ -208,22 +290,30 @@ async function runAdvancedSchedulingTests() {
       slot: { startTime: '10:00', endTime: '10:15' },
     }),
   });
-  track(assert(
-    bookStream1.status === 201 && bookStream1.data.status === 'CONFIRMED',
-    'Book exact STREAM slot returns 201 with appointment payload',
-    `actual status/data: ${JSON.stringify(bookStream1.data)}`
-  ));
+  track(
+    assert(
+      bookStream1.status === 201 && bookStream1.data.status === 'CONFIRMED',
+      'Book exact STREAM slot returns 201 with appointment payload',
+      `actual status/data: ${JSON.stringify(bookStream1.data)}`,
+    ),
+  );
 
   const appointment1Id = bookStream1.data.id || bookStream1.data.appointmentId;
 
   // Check STREAM availability after booking
-  const availStreamAfter = await request(`/doctors/${doc1ProfileId}/availability?date=${testDate}`);
-  const bookedSlotObj = Array.isArray(availStreamAfter.data) ? availStreamAfter.data.find(s => s.startTime === '10:00') : null;
-  track(assert(
-    bookedSlotObj && bookedSlotObj.available === false,
-    'Booked STREAM slot is marked unavailable (available: false)',
-    `actual status/data: ${JSON.stringify(bookedSlotObj)}`
-  ));
+  const availStreamAfter = await request(
+    `/doctors/${doc1ProfileId}/availability?date=${testDate}`,
+  );
+  const bookedSlotObj = Array.isArray(availStreamAfter.data)
+    ? availStreamAfter.data.find((s) => s.startTime === '10:00')
+    : null;
+  track(
+    assert(
+      bookedSlotObj && bookedSlotObj.available === false,
+      'Booked STREAM slot is marked unavailable (available: false)',
+      `actual status/data: ${JSON.stringify(bookedSlotObj)}`,
+    ),
+  );
 
   // Reject duplicate STREAM booking
   const bookStreamDup = await request('/appointments', {
@@ -236,7 +326,13 @@ async function runAdvancedSchedulingTests() {
       slot: { startTime: '10:00', endTime: '10:15' },
     }),
   });
-  track(assert(bookStreamDup.status === 409, 'Reject booking booked STREAM slot with 409 Conflict', `actual status/data: ${bookStreamDup.status}`));
+  track(
+    assert(
+      bookStreamDup.status === 409,
+      'Reject booking booked STREAM slot with 409 Conflict',
+      `actual status/data: ${bookStreamDup.status}`,
+    ),
+  );
 
   // Reject booking for past date
   const bookPast = await request('/appointments', {
@@ -249,17 +345,29 @@ async function runAdvancedSchedulingTests() {
       slot: { startTime: '10:00', endTime: '10:15' },
     }),
   });
-  track(assert(bookPast.status === 400, 'Reject booking for past date with 400 Bad Request', `actual status/data: ${bookPast.status}`));
-
+  track(
+    assert(
+      bookPast.status === 400,
+      'Reject booking for past date with 400 Bad Request',
+      `actual status/data: ${bookPast.status}`,
+    ),
+  );
 
   // 4. WAVE SCHEDULING TESTS
   console.log('\n══════ 4. WAVE SCHEDULING & TOKEN ASSIGNMENT TESTS ══════');
-  const availWave = await request(`/doctors/${doc2ProfileId}/availability?date=${testDate}`);
-  track(assert(
-    availWave.status === 200 && Array.isArray(availWave.data) && availWave.data[0] && availWave.data[0].capacity === 3,
-    'Fetch WAVE availability returns window with capacity',
-    `actual status/data: ${JSON.stringify(availWave.data)}`
-  ));
+  const availWave = await request(
+    `/doctors/${doc2ProfileId}/availability?date=${testDate}`,
+  );
+  track(
+    assert(
+      availWave.status === 200 &&
+        Array.isArray(availWave.data) &&
+        availWave.data[0] &&
+        availWave.data[0].capacity === 3,
+      'Fetch WAVE availability returns window with capacity',
+      `actual status/data: ${JSON.stringify(availWave.data)}`,
+    ),
+  );
 
   // Patient 1 books WAVE -> Token 1
   const wave1 = await request('/appointments', {
@@ -272,7 +380,13 @@ async function runAdvancedSchedulingTests() {
       window: '10:00-11:00',
     }),
   });
-  track(assert(wave1.status === 201 && wave1.data.token === 1, 'Patient 1 books WAVE window -> Token 1 assigned', `actual status/data: ${JSON.stringify(wave1.data)}`));
+  track(
+    assert(
+      wave1.status === 201 && wave1.data.token === 1,
+      'Patient 1 books WAVE window -> Token 1 assigned',
+      `actual status/data: ${JSON.stringify(wave1.data)}`,
+    ),
+  );
 
   // Duplicate WAVE booking for same patient -> 409
   const waveDup = await request('/appointments', {
@@ -285,7 +399,13 @@ async function runAdvancedSchedulingTests() {
       window: '10:00-11:00',
     }),
   });
-  track(assert(waveDup.status === 409, 'Reject duplicate WAVE booking for same patient with 409 Conflict', `actual status/data: ${waveDup.status}`));
+  track(
+    assert(
+      waveDup.status === 409,
+      'Reject duplicate WAVE booking for same patient with 409 Conflict',
+      `actual status/data: ${waveDup.status}`,
+    ),
+  );
 
   // Patient 2 books WAVE -> Token 2
   const wave2 = await request('/appointments', {
@@ -298,7 +418,13 @@ async function runAdvancedSchedulingTests() {
       window: '10:00-11:00',
     }),
   });
-  track(assert(wave2.status === 201 && wave2.data.token === 2, 'Patient 2 books WAVE window -> Token 2 assigned', `actual status/data: ${JSON.stringify(wave2.data)}`));
+  track(
+    assert(
+      wave2.status === 201 && wave2.data.token === 2,
+      'Patient 2 books WAVE window -> Token 2 assigned',
+      `actual status/data: ${JSON.stringify(wave2.data)}`,
+    ),
+  );
 
   // Patient 3 books WAVE -> Token 3
   const wave3 = await request('/appointments', {
@@ -311,7 +437,13 @@ async function runAdvancedSchedulingTests() {
       window: '10:00-11:00',
     }),
   });
-  track(assert(wave3.status === 201 && wave3.data.token === 3, 'Patient 3 books WAVE window -> Token 3 assigned', `actual status/data: ${JSON.stringify(wave3.data)}`));
+  track(
+    assert(
+      wave3.status === 201 && wave3.data.token === 3,
+      'Patient 3 books WAVE window -> Token 3 assigned',
+      `actual status/data: ${JSON.stringify(wave3.data)}`,
+    ),
+  );
 
   // Patient 4 books WAVE (Capacity = 3 exceeded) -> 409 Conflict
   const waveOver = await request('/appointments', {
@@ -324,58 +456,99 @@ async function runAdvancedSchedulingTests() {
       window: '10:00-11:00',
     }),
   });
-  track(assert(waveOver.status === 409, 'Reject booking exceeding maxCapacity with 409 Conflict (Wave Full)', `actual status/data: ${waveOver.status}`));
-
+  track(
+    assert(
+      waveOver.status === 409,
+      'Reject booking exceeding maxCapacity with 409 Conflict (Wave Full)',
+      `actual status/data: ${waveOver.status}`,
+    ),
+  );
 
   // 5. GET APPOINTMENT BY ID TESTS
   console.log('\n══════ 5. GET APPOINTMENT BY ID TESTS ══════');
   // No token -> 401
   const getNoAuth = await request(`/appointments/${appointment1Id}`);
-  track(assert(getNoAuth.status === 401, 'GET appointment without JWT -> 401', `actual status/data: ${getNoAuth.status}`));
+  track(
+    assert(
+      getNoAuth.status === 401,
+      'GET appointment without JWT -> 401',
+      `actual status/data: ${getNoAuth.status}`,
+    ),
+  );
 
   // Different patient -> 403
   const getDiffPat = await request(`/appointments/${appointment1Id}`, {
     headers: { Authorization: `Bearer ${pat2Token}` },
   });
-  track(assert(getDiffPat.status === 403, 'Different patient GET -> 403', `actual status/data: ${getDiffPat.status}`));
+  track(
+    assert(
+      getDiffPat.status === 403,
+      'Different patient GET -> 403',
+      `actual status/data: ${getDiffPat.status}`,
+    ),
+  );
 
   // Owner Patient -> 200
   const getOwnerPat = await request(`/appointments/${appointment1Id}`, {
     headers: { Authorization: `Bearer ${pat1Token}` },
   });
-  track(assert(
-    getOwnerPat.status === 200 && (getOwnerPat.data.appointmentId === appointment1Id || getOwnerPat.data.id === appointment1Id),
-    'Fetch appointment by valid UUID returns appointment details',
-    `actual status/data: ${JSON.stringify(getOwnerPat.data)}`
-  ));
+  track(
+    assert(
+      getOwnerPat.status === 200 &&
+        (getOwnerPat.data.appointmentId === appointment1Id ||
+          getOwnerPat.data.id === appointment1Id),
+      'Fetch appointment by valid UUID returns appointment details',
+      `actual status/data: ${JSON.stringify(getOwnerPat.data)}`,
+    ),
+  );
 
   // Assigned Doctor -> 200
   const getDocOwner = await request(`/appointments/${appointment1Id}`, {
     headers: { Authorization: `Bearer ${doc1Token}` },
   });
-  track(assert(
-    getDocOwner.status === 200 && (getDocOwner.data.appointmentId === appointment1Id || getDocOwner.data.id === appointment1Id),
-    'Assigned doctor GET -> success',
-    `actual status/data: ${JSON.stringify(getDocOwner.data)}`
-  ));
+  track(
+    assert(
+      getDocOwner.status === 200 &&
+        (getDocOwner.data.appointmentId === appointment1Id ||
+          getDocOwner.data.id === appointment1Id),
+      'Assigned doctor GET -> success',
+      `actual status/data: ${JSON.stringify(getDocOwner.data)}`,
+    ),
+  );
 
   // Invalid UUID -> 400
   const getInvalidUuid = await request('/appointments/invalid-uuid', {
     headers: { Authorization: `Bearer ${pat1Token}` },
   });
-  track(assert(getInvalidUuid.status === 400, 'Reject invalid appointment ID UUID with 400 Bad Request via ParseUUIDPipe', `actual status/data: ${getInvalidUuid.status}`));
+  track(
+    assert(
+      getInvalidUuid.status === 400,
+      'Reject invalid appointment ID UUID with 400 Bad Request via ParseUUIDPipe',
+      `actual status/data: ${getInvalidUuid.status}`,
+    ),
+  );
 
   // Non-existent UUID -> 404
   const getNotFound = await request(`/appointments/${fakeUuid}`, {
     headers: { Authorization: `Bearer ${pat1Token}` },
   });
-  track(assert(getNotFound.status === 404, 'Reject non-existent appointment ID with 404 Not Found', `actual status/data: ${getNotFound.status}`));
-
+  track(
+    assert(
+      getNotFound.status === 404,
+      'Reject non-existent appointment ID with 404 Not Found',
+      `actual status/data: ${getNotFound.status}`,
+    ),
+  );
 
   // 6. WAVE CONCURRENCY INTEGRATION TESTS
   console.log('\n══════ 6. WAVE CONCURRENCY INTEGRATION TESTS ══════');
   const concDocEmail = `doc_conc_${timestamp}@test.com`;
-  const concDocToken = await registerUser(concDocEmail, 'Password123!', 'DOCTOR', 'Dr. Concurrency');
+  const concDocToken = await registerUser(
+    concDocEmail,
+    'Password123!',
+    'DOCTOR',
+    'Dr. Concurrency',
+  );
   const concDocProfileRes = await request('/doctor/profile', {
     method: 'POST',
     headers: { Authorization: `Bearer ${concDocToken}` },
@@ -394,7 +567,11 @@ async function runAdvancedSchedulingTests() {
   await request('/doctor/availability', {
     method: 'POST',
     headers: { Authorization: `Bearer ${concDocToken}` },
-    body: JSON.stringify({ weekday: 'Monday', startTime: '10:00', endTime: '11:00' }),
+    body: JSON.stringify({
+      weekday: 'Monday',
+      startTime: '10:00',
+      endTime: '11:00',
+    }),
   });
 
   await request(`/doctors/${concDocProfileId}/scheduling`, {
@@ -432,16 +609,24 @@ async function runAdvancedSchedulingTests() {
   const concResults = await Promise.all(concRequests);
   const concSuccesses = concResults.filter((r) => r.status === 201);
   const concRejections = concResults.filter((r) => r.status === 409);
-  const allocatedTokens = concSuccesses.map((r) => r.data.token).sort((a, b) => a - b);
+  const allocatedTokens = concSuccesses
+    .map((r) => r.data.token)
+    .sort((a, b) => a - b);
 
-  track(assert(
-    concSuccesses.length <= 5 && concSuccesses.length + concRejections.length === 10,
-    `Overbooking blocked (Successes: ${concSuccesses.length}, Rejections: ${concRejections.length})`,
-  ));
-  track(assert(
-    JSON.stringify(allocatedTokens) === JSON.stringify(allocatedTokens.slice().sort((a, b) => a - b)),
-    `Tokens are strictly unique and sequential: ${JSON.stringify(allocatedTokens)}`,
-  ));
+  track(
+    assert(
+      concSuccesses.length <= 5 &&
+        concSuccesses.length + concRejections.length === 10,
+      `Overbooking blocked (Successes: ${concSuccesses.length}, Rejections: ${concRejections.length})`,
+    ),
+  );
+  track(
+    assert(
+      JSON.stringify(allocatedTokens) ===
+        JSON.stringify(allocatedTokens.slice().sort((a, b) => a - b)),
+      `Tokens are strictly unique and sequential: ${JSON.stringify(allocatedTokens)}`,
+    ),
+  );
 
   // Concurrent duplicate patient test
   const dupRequests = [
@@ -468,13 +653,17 @@ async function runAdvancedSchedulingTests() {
   ];
   const dupResults = await Promise.all(dupRequests);
   const dupRejections = dupResults.filter((r) => r.status === 409);
-  track(assert(
-    dupRejections.length >= 1,
-    'Duplicate patient race: Exactly 1 request succeeded and duplicate was rejected (409)',
-  ));
+  track(
+    assert(
+      dupRejections.length >= 1,
+      'Duplicate patient race: Exactly 1 request succeeded and duplicate was rejected (409)',
+    ),
+  );
 
   console.log('\n══════ ADVANCED SCHEDULING & CONCURRENCY SUMMARY ══════');
-  console.log(`Passed: ${passed} | Failed: ${failed} | Total: ${passed + failed}`);
+  console.log(
+    `Passed: ${passed} | Failed: ${failed} | Total: ${passed + failed}`,
+  );
   console.log('═══════════════════════════════════════════════════════════\n');
 
   if (failed > 0) {

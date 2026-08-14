@@ -25,7 +25,7 @@ Doctor appointment scheduling systems must handle concurrent booking attempts ta
 
 1. **Application-Only Checks**: Simple `findOne` query followed by `save`. Rejected due to TOCTOU race conditions under parallel execution.
 2. **Prisma ORM Standard Constraints**: Standard unique indexes on `(doctor_id, date, slot_start_time)`. Rejected because cancelling an appointment leaves a row in the table, preventing future bookings for that slot unless soft deletes or partial indexes are used.
-3. **TypeORM `pessimistic_write` + PostgreSQL Partial Unique Indexes**: 
+3. **TypeORM `pessimistic_write` + PostgreSQL Partial Unique Indexes**:
    - Application Layer: Explicit `SELECT FOR UPDATE` row locks inside TypeORM `QueryRunner` transactions.
    - Database Engine Layer: PostgreSQL Partial Unique Indexes (`CREATE UNIQUE INDEX ... WHERE status = 'CONFIRMED'`).
 
@@ -38,9 +38,10 @@ Option 3 was chosen and implemented.
 ### Implementation Details:
 
 1. **PostgreSQL Partial Unique Index DDL**:
+
    ```sql
-   CREATE UNIQUE INDEX idx_stream_slot_unique 
-   ON appointments (doctor_id, date, slot_start_time) 
+   CREATE UNIQUE INDEX idx_stream_slot_unique
+   ON appointments (doctor_id, date, slot_start_time)
    WHERE status = 'CONFIRMED' AND slot_start_time IS NOT NULL;
    ```
 
@@ -57,10 +58,12 @@ Option 3 was chosen and implemented.
 ## 5. Consequences
 
 ### Positive:
+
 - Physical serialization of concurrent booking requests at the database row level.
 - Engine-level duplicate booking rejection in PostgreSQL if application locks are ever bypassed.
 - Small index size and O(1) B-tree lookup speeds by excluding cancelled records.
 
 ### Negative / Trade-Offs:
+
 - Requires PostgreSQL-specific migration DDL syntax.
 - Short lock wait time during parallel request bursts.
