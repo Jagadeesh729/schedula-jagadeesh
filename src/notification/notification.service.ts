@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -64,6 +65,11 @@ export class NotificationService {
           createdAt: saved.createdAt,
         });
       }
+
+      // Simulated / Emulated Email Notification Dispatch
+      new Logger(NotificationService.name).log(
+        `📧 [Email Dispatch Emulation] Notification email dispatched to patient ${saved.patientId} | Subject: "${saved.title}"`,
+      );
 
       return saved;
     } catch (err: unknown) {
