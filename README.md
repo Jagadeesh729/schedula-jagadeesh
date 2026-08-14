@@ -145,6 +145,7 @@ schedula-jagadeesh/
 ├── test-rescheduling-suite.js      # Rescheduling & Cutoff Test Suite (12 Scenarios)
 ├── test-elastic-scheduling.js      # Elastic Shrink & Expand Engine Test Suite (18 Scenarios)
 ├── test-notification-workflow.js    # Notification System & Workflow Integration Test Suite
+├── test-cron-reminder.js           # Automated Appointment Reminder & Stress Test Suite
 └── src/
     ├── main.ts                     # NestJS Bootstrap, CORS, ValidationPipe
     ├── app.module.ts              # Root AppModule, TypeORM connection, RateLimiterGuard
@@ -166,9 +167,10 @@ schedula-jagadeesh/
     │   ├── patient.controller.ts
     │   ├── patient.service.ts
     │   └── entities/patient-profile.entity.ts
-    ├── notification/              # Event-Based Notification Module
+    ├── notification/              # Event-Based Notification Module & Cron Scheduler
     │   ├── notification.controller.ts
     │   ├── notification.service.ts
+    │   ├── reminder.service.ts     # Automated Cron Appointment Reminder Scheduler
     │   ├── notification.module.ts
     │   ├── dto/notification.dto.ts
     │   ├── entities/notification.entity.ts
@@ -260,9 +262,15 @@ WHERE event_id IS NOT NULL;
 - **Atomic Slot Swap**: Releases old slot reservation and acquires new slot inside a single TypeORM transaction with `pessimistic_write` row locks.
 - **Conflict Resolution**: If the target slot is unavailable, scans the upcoming 14 days and returns `409 Conflict` with `suggestedNextAvailable`.
 
+### 4. Automated Appointment Reminder System (NestJS Cron Jobs)
+- **Background Cron Scheduler**: `@Cron(CronExpression.EVERY_MINUTE)` scans `CONFIRMED` upcoming appointments within the configured reminder window (`REMINDER_WINDOW_MINUTES`, default 48h).
+- **STREAM & WAVE Content Formatting**: Formats exact time for STREAM appointments and reporting time + token numbers for WAVE appointments.
+- **Idempotency & Deduplication**: Employs deterministic `eventId = reminder_${appointment.id}` coupled with PostgreSQL partial unique index `idx_notification_event_unique` to prevent duplicate reminders.
+- **Role Guard Protection**: `POST /notifications/trigger-reminders` manual trigger restricted to `@Roles('DOCTOR', 'ADMIN')` (`PATIENT` role returns `403 Forbidden`).
+
 ---
 
-## 📑 Complete API Endpoint Table (33 Endpoints)
+## 📑 Complete API Endpoint Table (34 Endpoints)
 
 | Method | Path Alias 1 | Path Alias 2 | Auth Required | Description |
 | :--- | :--- | :--- | :---: | :--- |
@@ -294,6 +302,7 @@ WHERE event_id IS NOT NULL;
 | `PATCH`| `/notifications/read-all` | `/notification/read-all` | Yes (`PATIENT`) | Mark all unread notifications as read |
 | `DELETE`| `/notifications/:id` | `/notification/:id` | Yes (`PATIENT`) | Delete a specific notification |
 | `DELETE`| `/notifications` | `/notification` | Yes (`PATIENT`) | Delete all notifications for the patient |
+| `POST` | `/notifications/trigger-reminders` | — | Yes (`DOCTOR` / `ADMIN`) | Manually trigger automated appointment reminders |
 | `GET` | `/health` | — | No | Comprehensive service & database latency health check |
 | `GET` | `/readiness` | — | No | Kubernetes readiness probe |
 | `GET` | `/liveness` | — | No | Kubernetes liveness probe |
@@ -348,7 +357,7 @@ npm run start:prod
 
 ## 🧪 Automated Test Suite Execution
 
-The repository includes **9 comprehensive test runner scripts** verifying **121 explicitly enumerated test cases** plus a **50-request high-contention stress test**:
+The repository includes **10 comprehensive test runner scripts** verifying **131 explicitly enumerated test cases** plus a **50-request high-contention stress test**:
 
 ```bash
 # 1. Type Check (Ensure 0 compilation errors)
@@ -372,13 +381,16 @@ node test-elastic-scheduling.js
 # 7. Run Event-Based Notification Workflow Suite (8 Test Cases)
 node test-notification-workflow.js
 
-# 8. Run Boundary Condition & Idempotent Edge-Case Suite (7 Test Cases)
+# 8. Run Automated Appointment Reminder Cron Suite (10 Test Cases)
+node test-cron-reminder.js
+
+# 9. Run Boundary Condition & Idempotent Edge-Case Suite (7 Test Cases)
 node test-edge-cases.js
 
-# 9. Run Direct PostgreSQL Partial Unique Index Invariant Suite (3 Test Cases - Code 23505)
+# 10. Run Direct PostgreSQL Partial Unique Index Invariant Suite (3 Test Cases - Code 23505)
 node test-db-partial-index.js
 
-# 10. Run 50-Way Parallel High-Contention Stress Suite (50 Parallel Requests - 1/49/0 Result)
+# 11. Run 50-Way Parallel High-Contention Stress Suite (50 Parallel Requests - 1/49/0 Result)
 node test-concurrency-stress.js
 ```
 
