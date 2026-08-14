@@ -11,6 +11,7 @@ import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/notification.dto';
 import { PatientProfile } from '../patient/entities/patient-profile.entity';
 import { NotificationGateway } from './notification.gateway';
+import { NotificationType } from './enums/notification-type.enum';
 
 @Injectable()
 export class NotificationService {
@@ -93,8 +94,12 @@ export class NotificationService {
 
   /**
    * Retrieve all notifications for the authenticated patient, ordered latest first (createdAt DESC), with counts.
+   * Supports optional category filtering via NotificationType (e.g. APPOINTMENT_REMINDER).
    */
-  async getPatientNotifications(userId: string): Promise<{
+  async getPatientNotifications(
+    userId: string,
+    type?: NotificationType,
+  ): Promise<{
     data: Notification[];
     totalCount: number;
     unreadCount: number;
@@ -106,8 +111,15 @@ export class NotificationService {
       throw new NotFoundException('Patient profile not found');
     }
 
+    const whereClause: { patientId: string; type?: NotificationType } = {
+      patientId: patient.id,
+    };
+    if (type) {
+      whereClause.type = type;
+    }
+
     const [data, totalCount] = await this.notificationRepo.findAndCount({
-      where: { patientId: patient.id },
+      where: whereClause,
       order: { createdAt: 'DESC' },
     });
 

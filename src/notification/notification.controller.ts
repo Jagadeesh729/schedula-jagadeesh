@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   Request,
   HttpCode,
@@ -16,6 +17,7 @@ import { ReminderService } from './reminder.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
+import { NotificationType } from './enums/notification-type.enum';
 
 interface RequestWithUser {
   user: {
@@ -47,8 +49,11 @@ export class NotificationController {
 
   @Get(['notifications', 'notification'])
   @Roles('PATIENT')
-  async getNotifications(@Request() req: RequestWithUser) {
-    return this.notificationService.getPatientNotifications(req.user.id);
+  async getNotifications(
+    @Request() req: RequestWithUser,
+    @Query('type') type?: NotificationType,
+  ) {
+    return this.notificationService.getPatientNotifications(req.user.id, type);
   }
 
   @Patch(['notifications/read-all', 'notification/read-all'])
