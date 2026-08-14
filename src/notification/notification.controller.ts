@@ -5,6 +5,7 @@ import {
   Patch,
   Delete,
   Param,
+  Body,
   UseGuards,
   Request,
   HttpCode,
@@ -34,8 +35,10 @@ export class NotificationController {
   @Post('notifications/trigger-reminders')
   @HttpCode(200)
   @Roles('DOCTOR', 'ADMIN')
-  async triggerReminders() {
-    const stats = await this.reminderService.processAppointmentReminders();
+  async triggerReminders(@Body() body?: { appointmentId?: string }) {
+    const stats = await this.reminderService.processAppointmentReminders(
+      body?.appointmentId,
+    );
     return {
       message: 'Appointment reminders processed',
       ...stats,

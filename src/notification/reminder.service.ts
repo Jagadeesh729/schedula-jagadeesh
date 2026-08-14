@@ -49,7 +49,9 @@ export class ReminderService {
    * Scans active CONFIRMED appointments within the configured reminder window,
    * constructs STREAM or WAVE reminder messages, and persists deduplicated notifications.
    */
-  async processAppointmentReminders(): Promise<ReminderProcessingStats> {
+  async processAppointmentReminders(
+    targetAppointmentId?: string,
+  ): Promise<ReminderProcessingStats> {
     const reminderWindowMinutes = process.env.REMINDER_WINDOW_MINUTES
       ? parseInt(process.env.REMINDER_WINDOW_MINUTES, 10)
       : 2880; // Default 48-hour reminder window (covers today & tomorrow)
@@ -59,9 +61,11 @@ export class ReminderService {
       now.getTime() + reminderWindowMinutes * 60 * 1000,
     );
 
-    // Query active CONFIRMED appointments
+    // Query active CONFIRMED appointments (or specific target appointment)
     const appointments = await this.appointmentRepo.find({
-      where: { status: AppointmentStatus.CONFIRMED },
+      where: targetAppointmentId
+        ? { id: targetAppointmentId, status: AppointmentStatus.CONFIRMED }
+        : { status: AppointmentStatus.CONFIRMED },
       relations: { doctor: true, patient: true },
     });
 
