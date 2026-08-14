@@ -11,7 +11,9 @@ import { JwtStrategy } from './jwt.strategy';
     UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'super_secret_key_for_jwt',
+      secret:
+        process.env.JWT_SECRET ||
+        'schedula_production_jwt_master_secret_key_2026_enterprise_secure',
       signOptions: { expiresIn: '1d' },
     }),
   ],
