@@ -14,6 +14,10 @@ export interface ReminderProcessingStats {
   created: number;
   duplicates: number;
   skipped: number;
+  skippedBreakdown?: {
+    incompleteData: number;
+    outsideWindow: number;
+  };
 }
 
 @Injectable()
@@ -36,7 +40,7 @@ export class ReminderService {
       const stats = await this.processAppointmentReminders();
       if (stats.created > 0) {
         this.logger.log(
-          `Cron reminder execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments.`,
+          `Cron reminder execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments. (Skipped Breakdown: ${JSON.stringify(stats.skippedBreakdown)})`,
         );
       }
     } catch (err) {
@@ -74,6 +78,10 @@ export class ReminderService {
       created: 0,
       duplicates: 0,
       skipped: 0,
+      skippedBreakdown: {
+        incompleteData: 0,
+        outsideWindow: 0,
+      },
     };
 
     for (const appointment of appointments) {
@@ -82,6 +90,7 @@ export class ReminderService {
       // Exclude invalid/incomplete appointments
       if (!appointment.patientId || !appointment.doctor) {
         stats.skipped++;
+        stats.skippedBreakdown!.incompleteData++;
         continue;
       }
 
@@ -92,6 +101,7 @@ export class ReminderService {
 
       if (!startTimeStr) {
         stats.skipped++;
+        stats.skippedBreakdown!.incompleteData++;
         continue;
       }
 
@@ -102,6 +112,7 @@ export class ReminderService {
 
       if (!appointmentDateTime) {
         stats.skipped++;
+        stats.skippedBreakdown!.incompleteData++;
         continue;
       }
 
@@ -109,6 +120,7 @@ export class ReminderService {
       const minCutoff = new Date(now.getTime() - 60 * 60 * 1000);
       if (appointmentDateTime < minCutoff || appointmentDateTime > windowEnd) {
         stats.skipped++;
+        stats.skippedBreakdown!.outsideWindow++;
         continue;
       }
 
