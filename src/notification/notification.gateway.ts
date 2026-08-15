@@ -64,11 +64,12 @@ export class NotificationGateway
     }
 
     try {
+      const secret =
+        process.env.JWT_SECRET ||
+        'schedula_production_jwt_master_secret_key_2026_enterprise_secure';
       const payload = this.jwtService.verify<{ sub: string; role: string }>(
         token,
-        {
-          secret: process.env.JWT_SECRET || 'supersecretkey',
-        },
+        { secret },
       );
 
       const authenticatedUserId = payload.sub;
@@ -82,8 +83,8 @@ export class NotificationGateway
 
         if (
           !patientProfile ||
-          (patientProfile.user &&
-            patientProfile.user.id !== authenticatedUserId)
+          !patientProfile.user ||
+          patientProfile.user.id !== authenticatedUserId
         ) {
           this.logger.warn(
             `Unauthorized WebSocket subscription attempt: User ${authenticatedUserId} tried to subscribe to patient ${data.patientId}`,
