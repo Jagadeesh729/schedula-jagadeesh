@@ -102,6 +102,8 @@ export class ReminderService {
       : 2880; // Default 48-hour reminder window (covers today & tomorrow)
 
     const nowTs = Date.now();
+    const now = new Date(nowTs);
+    const todayUtcDateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
     const windowEndTs = nowTs + reminderWindowMinutes * 60 * 1000;
 
     // Query active CONFIRMED appointments (or specific target appointment)
@@ -173,14 +175,16 @@ export class ReminderService {
 
       const eventId = `reminder_${appointment.id}`;
 
-      let title = 'Appointment Reminder';
+      const isRescheduled = Boolean(appointment.isAutoRescheduled);
+      const title = isRescheduled
+        ? 'Appointment Reminder (Updated Schedule)'
+        : 'Appointment Reminder';
       let message = '';
 
       if (
         appointment.scheduleType === SchedulingType.STREAM ||
         appointment.slotStartTime
       ) {
-        title = 'Appointment Reminder';
         message = `Reminder: You have an appointment with ${formattedDoctorName} on ${appointment.date} at ${appointment.slotStartTime}.`;
       } else if (
         appointment.scheduleType === SchedulingType.WAVE ||
@@ -191,8 +195,9 @@ export class ReminderService {
           continue; // Missing required WAVE token or window
         }
         const windowStart = appointment.window.split('-')[0]?.trim() || '';
-        title = 'Appointment Reminder';
-        message = `Reminder: You have an appointment with ${formattedDoctorName} today. Reporting Time: ${windowStart}. Token Number: ${appointment.token}`;
+        const isToday = appointment.date === todayUtcDateStr;
+        const dateDescriptor = isToday ? 'today' : `on ${appointment.date}`;
+        message = `Reminder: You have an appointment with ${formattedDoctorName} ${dateDescriptor}. Reporting Time: ${windowStart}. Token Number: ${appointment.token}`;
       } else {
         stats.skipped++;
         continue;

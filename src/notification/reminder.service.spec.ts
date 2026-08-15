@@ -189,6 +189,102 @@ describe('ReminderService', () => {
       expect(stats.skipped).toBe(1);
       expect(stats.skippedBreakdown?.outsideWindow).toBe(1);
     });
+
+    it('should format WAVE reminder with "today" when appointment is today in UTC', async () => {
+      const now = new Date();
+      const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+      const hour = String(now.getUTCHours()).padStart(2, '0');
+      const windowStr = `${hour}:00 - ${hour}:30`;
+
+      const mockAppt = {
+        id: 'appt-wave-today',
+        patientId: 'patient-today',
+        doctor: { id: 'doc-today', fullName: 'Dr. House' },
+        scheduleType: SchedulingType.WAVE,
+        status: AppointmentStatus.CONFIRMED,
+        date: todayStr,
+        window: windowStr,
+        token: 5,
+        isAutoRescheduled: false,
+      };
+
+      appointmentRepo.find.mockResolvedValueOnce([mockAppt]);
+      notificationService.createNotification.mockResolvedValueOnce({
+        id: 'notif-today',
+      } as unknown as Notification);
+
+      process.env.REMINDER_WINDOW_MINUTES = '525600';
+
+      await service.processAppointmentReminders();
+
+      expect(notificationService.createNotification).toHaveBeenCalled();
+      const callArg = notificationService.createNotification.mock.calls[0][0];
+      expect(callArg.title).toBe('Appointment Reminder');
+      expect(callArg.message).toContain(
+        `today. Reporting Time: ${hour}:00. Token Number: 5`,
+      );
+    });
+
+    it('should format WAVE reminder with "on YYYY-MM-DD" when appointment is on a future date', async () => {
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const futureDateStr = `${futureDate.getUTCFullYear()}-${String(futureDate.getUTCMonth() + 1).padStart(2, '0')}-${String(futureDate.getUTCDate()).padStart(2, '0')}`;
+
+      const mockAppt = {
+        id: 'appt-wave-future',
+        patientId: 'patient-future',
+        doctor: { id: 'doc-future', fullName: 'Dr. Watson' },
+        scheduleType: SchedulingType.WAVE,
+        status: AppointmentStatus.CONFIRMED,
+        date: futureDateStr,
+        window: '14:00 - 15:00',
+        token: 2,
+        isAutoRescheduled: false,
+      };
+
+      appointmentRepo.find.mockResolvedValueOnce([mockAppt]);
+      notificationService.createNotification.mockResolvedValueOnce({
+        id: 'notif-future',
+      } as unknown as Notification);
+
+      process.env.REMINDER_WINDOW_MINUTES = '525600';
+
+      await service.processAppointmentReminders();
+
+      expect(notificationService.createNotification).toHaveBeenCalled();
+      const callArg = notificationService.createNotification.mock.calls[0][0];
+      expect(callArg.title).toBe('Appointment Reminder');
+      expect(callArg.message).toContain(
+        `on ${futureDateStr}. Reporting Time: 14:00. Token Number: 2`,
+      );
+    });
+
+    it('should format reminder title with "(Updated Schedule)" when isAutoRescheduled is true', async () => {
+      const mockAppt = {
+        id: 'appt-resched-1',
+        patientId: 'patient-resched',
+        doctor: { id: 'doc-resched', fullName: 'Dr. Strange' },
+        scheduleType: SchedulingType.STREAM,
+        status: AppointmentStatus.CONFIRMED,
+        date: baseDateStr,
+        slotStartTime: '11:00',
+        slotEndTime: '11:15',
+        isAutoRescheduled: true,
+      };
+
+      appointmentRepo.find.mockResolvedValueOnce([mockAppt]);
+      notificationService.createNotification.mockResolvedValueOnce({
+        id: 'notif-resched',
+      } as unknown as Notification);
+
+      process.env.REMINDER_WINDOW_MINUTES = '525600';
+
+      await service.processAppointmentReminders();
+
+      expect(notificationService.createNotification).toHaveBeenCalled();
+      const callArg = notificationService.createNotification.mock.calls[0][0];
+      expect(callArg.title).toBe('Appointment Reminder (Updated Schedule)');
+      expect(callArg.message).toContain('Dr. Strange');
+    });
   });
 
   describe('Distributed Advisory Lock Coordination', () => {
