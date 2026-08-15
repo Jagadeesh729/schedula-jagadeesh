@@ -406,7 +406,7 @@ node test-db-partial-index.js
 node test-concurrency-stress.js
 ```
 
-Archived test execution log file preserved at: [`scratch/logs/test-execution.log`](file:///C:/Users/kunda/.gemini/antigravity/brain/01ac7018-4860-437d-84e1-5df4ec62fd37/scratch/logs/test-execution.log).
+Archived test execution log file preserved at: `scratch/logs/test-execution.log`.
 
 ---
 
