@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Appointment } from '../scheduling/entities/appointment.entity';
 import { AppointmentStatus } from '../scheduling/enums/appointment-status.enum';
@@ -23,20 +23,61 @@ export interface ReminderProcessingStats {
 @Injectable()
 export class ReminderService {
   private readonly logger = new Logger(ReminderService.name);
+  private static readonly CRON_ADVISORY_LOCK_ID = 1785100000001;
 
   constructor(
     @InjectRepository(Appointment)
     private readonly appointmentRepo: Repository<Appointment>,
     private readonly notificationService: NotificationService,
+    @Optional() private readonly dataSource?: DataSource,
   ) {}
 
   /**
    * Cron job executing periodically to check for upcoming appointments requiring reminders.
    * Default schedule: Every minute.
+   * Uses PostgreSQL transaction-level advisory locks to prevent duplicate cron executions across multi-instance clusters.
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleCronReminders(): Promise<void> {
     try {
+      // In clustered deployments, coordinate execution using PostgreSQL advisory lock
+      if (this.dataSource && this.dataSource.isInitialized) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+          const lockResult = (await queryRunner.query(
+            `SELECT pg_try_advisory_xact_lock(${ReminderService.CRON_ADVISORY_LOCK_ID}) as acquired;`,
+          )) as Array<{ acquired?: boolean }>;
+          const acquired = lockResult?.[0]?.acquired ?? true;
+
+          if (!acquired) {
+            this.logger.debug(
+              'Reminder cron cycle active on another cluster pod. Skipping duplicate execution.',
+            );
+            await queryRunner.rollbackTransaction();
+            await queryRunner.release();
+            return;
+          }
+
+          const stats = await this.processAppointmentReminders();
+          await queryRunner.commitTransaction();
+          await queryRunner.release();
+
+          if (stats.created > 0) {
+            this.logger.log(
+              `Cron reminder execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments. (Skipped Breakdown: ${JSON.stringify(stats.skippedBreakdown)})`,
+            );
+          }
+          return;
+        } catch {
+          await queryRunner.rollbackTransaction().catch(() => {});
+          await queryRunner.release().catch(() => {});
+        }
+      }
+
+      // Fallback for environments where advisory lock is unsupported
       const stats = await this.processAppointmentReminders();
       if (stats.created > 0) {
         this.logger.log(
@@ -60,10 +101,8 @@ export class ReminderService {
       ? parseInt(process.env.REMINDER_WINDOW_MINUTES, 10)
       : 2880; // Default 48-hour reminder window (covers today & tomorrow)
 
-    const now = new Date();
-    const windowEnd = new Date(
-      now.getTime() + reminderWindowMinutes * 60 * 1000,
-    );
+    const nowTs = Date.now();
+    const windowEndTs = nowTs + reminderWindowMinutes * 60 * 1000;
 
     // Query active CONFIRMED appointments (or specific target appointment)
     const appointments = await this.appointmentRepo.find({
@@ -116,9 +155,11 @@ export class ReminderService {
         continue;
       }
 
-      // Must be upcoming and within [now - 1 hour, windowEnd]
-      const minCutoff = new Date(now.getTime() - 60 * 60 * 1000);
-      if (appointmentDateTime < minCutoff || appointmentDateTime > windowEnd) {
+      const appointmentTs = appointmentDateTime.getTime();
+      const minCutoffTs = nowTs - 60 * 60 * 1000;
+
+      // Must be upcoming and within [now - 1 hour, windowEnd] in UTC epoch milliseconds
+      if (appointmentTs < minCutoffTs || appointmentTs > windowEndTs) {
         stats.skipped++;
         stats.skippedBreakdown!.outsideWindow++;
         continue;
@@ -194,12 +235,15 @@ export class ReminderService {
     return stats;
   }
 
+  /**
+   * Deterministically parses YYYY-MM-DD and HH:MM or HH:MM:SS into UTC Date object,
+   * eliminating host machine timezone dependencies across multi-region servers.
+   */
   private parseAppointmentDateTime(
     dateStr: string,
     timeStr: string,
   ): Date | null {
     try {
-      // Handles YYYY-MM-DD and HH:MM or HH:MM:SS
       const [year, month, day] = dateStr.split('-').map(Number);
       const [hours, minutes] = timeStr.split(':').map(Number);
       if (
@@ -211,7 +255,7 @@ export class ReminderService {
       ) {
         return null;
       }
-      return new Date(year, month - 1, day, hours, minutes, 0);
+      return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
     } catch {
       return null;
     }

@@ -13,7 +13,9 @@ import { NotificationGateway } from './notification.gateway';
   imports: [
     TypeOrmModule.forFeature([Notification, PatientProfile, Appointment]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'supersecretkey',
+      secret:
+        process.env.JWT_SECRET ||
+        'schedula_production_jwt_master_secret_key_2026_enterprise_secure',
       signOptions: { expiresIn: '1d' },
     }),
   ],
