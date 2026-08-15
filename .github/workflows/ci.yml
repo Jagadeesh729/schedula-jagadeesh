@@ -26,5 +26,14 @@ jobs:
       - name: Run Static Type Checking (tsc --noEmit)
         run: npx tsc --noEmit
 
+      - name: Run ESLint Code Analysis
+        run: npx eslint "src/**/*.ts"
+
+      - name: Run Prettier Style Verification
+        run: npx prettier --check "src/**/*.ts"
+
+      - name: Run Unit Test Suite
+        run: npm test
+
       - name: Run NestJS Production Build
         run: npm run build
