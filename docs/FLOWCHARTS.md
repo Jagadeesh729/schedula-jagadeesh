@@ -91,9 +91,5 @@ graph TD
     L --> N[Insert Notification & Broadcast Real-Time WebSocket Event]
     M --> N
     N --> O[Log Reminder Created Successfully]
+```
 ````
-
-```
-
-
-```
