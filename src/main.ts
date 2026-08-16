@@ -43,7 +43,11 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Schedula Enterprise Medical Appointment API')
     .setDescription(
-      'Production-grade Medical Appointment Scheduling & Elastic Availability Engine built with NestJS, TypeScript, and PostgreSQL',
+      'Production-grade Medical Appointment Scheduling & Elastic Availability Engine built with NestJS, TypeScript, and PostgreSQL.\n\n' +
+        '• [System Health Probe](/health)\n' +
+        '• [Container Readiness Probe](/readiness)\n' +
+        '• [Prometheus Telemetry Metrics](/metrics)\n' +
+        '• [GitHub Repository](https://github.com/Jagadeesh729/schedula-jagadeesh)',
     )
     .setVersion('1.0.0')
     .addBearerAuth(

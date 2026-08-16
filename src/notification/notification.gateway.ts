@@ -34,11 +34,11 @@ export class NotificationGateway
   ) {}
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected to WebSocket: ${client.id}`);
+    this.logger.log(`[WebSocket-Gateway] Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected from WebSocket: ${client.id}`);
+    this.logger.log(`[WebSocket-Gateway] Client disconnected: ${client.id}`);
   }
 
   /**
@@ -87,7 +87,7 @@ export class NotificationGateway
           patientProfile.user.id !== authenticatedUserId
         ) {
           this.logger.warn(
-            `Unauthorized WebSocket subscription attempt: User ${authenticatedUserId} tried to subscribe to patient ${data.patientId}`,
+            `[WebSocket-Gateway] Unauthorized subscription attempt: User ${authenticatedUserId} tried to subscribe to patient ${data.patientId}`,
           );
           return {
             status: 'error',
@@ -99,7 +99,7 @@ export class NotificationGateway
 
       await client.join(`patient_${data.patientId}`);
       this.logger.log(
-        `Authorized client ${client.id} (User: ${authenticatedUserId}) subscribed to room: patient_${data.patientId}`,
+        `[WebSocket-Gateway] Authorized client ${client.id} (User: ${authenticatedUserId}) subscribed to room: patient_${data.patientId}`,
       );
       return { status: 'subscribed', room: `patient_${data.patientId}` };
     } catch {

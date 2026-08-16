@@ -29,21 +29,44 @@ export class SlotDto {
   endTime!: string;
 }
 
+import { ApiProperty } from '@nestjs/swagger';
+
 export class CreateSchedulingConfigDto {
+  @ApiProperty({
+    enum: SchedulingType,
+    example: SchedulingType.STREAM,
+    description: 'Scheduling strategy: STREAM (slots) or WAVE (windows)',
+  })
   @IsNotEmpty()
   @IsEnum(SchedulingType)
   schedulingType!: SchedulingType;
 
+  @ApiProperty({
+    example: 15,
+    required: false,
+    description: 'STREAM slot duration in minutes (required for STREAM)',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
   slotDuration?: number;
 
+  @ApiProperty({
+    example: 5,
+    required: false,
+    description: 'STREAM buffer time in minutes between slots',
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   bufferTime?: number;
 
+  @ApiProperty({
+    example: 5,
+    required: false,
+    description:
+      'WAVE maximum patient token capacity per window (required for WAVE)',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)

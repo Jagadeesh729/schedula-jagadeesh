@@ -21,6 +21,8 @@ import {
 import { SchedulingType } from '../enums/scheduling-type.enum';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 
+export const RESCHEDULING_CUTOFF_MINUTES = 30;
+
 export interface GeneratedStreamSlot {
   startTime: string;
   endTime: string;
@@ -148,7 +150,7 @@ export class AppointmentService {
     const nowUtc = new Date(now.toISOString());
 
     const diffMs = target.getTime() - nowUtc.getTime();
-    const thirtyMinsMs = 30 * 60 * 1000;
+    const thirtyMinsMs = RESCHEDULING_CUTOFF_MINUTES * 60 * 1000;
 
     if (diffMs < thirtyMinsMs) {
       throw new BadRequestException(

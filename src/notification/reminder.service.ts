@@ -20,10 +20,11 @@ export interface ReminderProcessingStats {
   };
 }
 
+export const CRON_REMINDER_ADVISORY_LOCK_ID = 1785100000001;
+
 @Injectable()
 export class ReminderService {
   private readonly logger = new Logger(ReminderService.name);
-  private static readonly CRON_ADVISORY_LOCK_ID = 1785100000001;
 
   constructor(
     @InjectRepository(Appointment)
@@ -48,13 +49,13 @@ export class ReminderService {
 
         try {
           const lockResult = (await queryRunner.query(
-            `SELECT pg_try_advisory_xact_lock(${ReminderService.CRON_ADVISORY_LOCK_ID}) as acquired;`,
+            `SELECT pg_try_advisory_xact_lock(${CRON_REMINDER_ADVISORY_LOCK_ID}) as acquired;`,
           )) as Array<{ acquired?: boolean }>;
           const acquired = lockResult?.[0]?.acquired ?? true;
 
           if (!acquired) {
             this.logger.debug(
-              'Reminder cron cycle active on another cluster pod. Skipping duplicate execution.',
+              '[Cron-Reminder] Cycle active on another cluster pod. Skipping duplicate execution.',
             );
             await queryRunner.rollbackTransaction();
             await queryRunner.release();
@@ -67,7 +68,7 @@ export class ReminderService {
 
           if (stats.created > 0) {
             this.logger.log(
-              `Cron reminder execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments. (Skipped Breakdown: ${JSON.stringify(stats.skippedBreakdown)})`,
+              `[Cron-Reminder] Execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments. (Skipped Breakdown: ${JSON.stringify(stats.skippedBreakdown)})`,
             );
           }
           return;
@@ -81,11 +82,14 @@ export class ReminderService {
       const stats = await this.processAppointmentReminders();
       if (stats.created > 0) {
         this.logger.log(
-          `Cron reminder execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments. (Skipped Breakdown: ${JSON.stringify(stats.skippedBreakdown)})`,
+          `[Cron-Reminder] Execution complete: ${stats.created} reminders created, ${stats.duplicates} duplicates skipped out of ${stats.processed} processed appointments. (Skipped Breakdown: ${JSON.stringify(stats.skippedBreakdown)})`,
         );
       }
     } catch (err) {
-      this.logger.error('Failed to execute cron appointment reminders', err);
+      this.logger.error(
+        '[Cron-Reminder] Failed to execute cron appointment reminders',
+        err,
+      );
     }
   }
 

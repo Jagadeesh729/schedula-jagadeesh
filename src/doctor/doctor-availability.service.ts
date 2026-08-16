@@ -19,6 +19,8 @@ import { CreateCustomAvailabilityDto } from './dto/create-custom-availability.dt
 import { SchedulingType } from '../scheduling/enums/scheduling-type.enum';
 import { AppointmentStatus } from '../scheduling/enums/appointment-status.enum';
 
+export const ELASTIC_SHRINK_SEARCH_DAYS = 30;
+
 const WEEKDAY_NAMES: Weekday[] = [
   Weekday.Sunday,
   Weekday.Monday,
@@ -240,7 +242,7 @@ export class DoctorAvailabilityService {
         const startDateObj = new Date(`${origDate}T00:00:00Z`);
 
         // Search next 30 days for a valid slot/window
-        for (let offset = 1; offset <= 30; offset++) {
+        for (let offset = 1; offset <= ELASTIC_SHRINK_SEARCH_DAYS; offset++) {
           const nextDateObj = new Date(startDateObj);
           nextDateObj.setUTCDate(nextDateObj.getUTCDate() + offset);
           const nextDateStr = nextDateObj.toISOString().split('T')[0];
