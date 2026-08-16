@@ -21,7 +21,8 @@ describe('ReminderService', () => {
     >;
   };
 
-  const baseDateStr = '2026-08-16';
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const baseDateStr = `${tomorrow.getUTCFullYear()}-${String(tomorrow.getUTCMonth() + 1).padStart(2, '0')}-${String(tomorrow.getUTCDate()).padStart(2, '0')}`;
 
   beforeEach(async () => {
     appointmentRepo = {
