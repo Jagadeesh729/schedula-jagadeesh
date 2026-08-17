@@ -7,7 +7,7 @@ const TIME_FORMAT = /^([0-1]\d|2[0-3]):[0-5]\d$/;
 export class UpdateRecurringAvailabilityDto {
   @ApiPropertyOptional({
     enum: Weekday,
-    example: Weekday.MONDAY,
+    example: Weekday.Monday,
     description: 'Updated day of week',
   })
   @IsEnum(Weekday, {
