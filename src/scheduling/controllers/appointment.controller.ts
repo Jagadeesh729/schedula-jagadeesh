@@ -18,6 +18,8 @@ import {
   RescheduleAppointmentDto,
 } from '../dto/scheduling.dto';
 
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
 interface RequestWithUser {
   user: {
     id: string;
@@ -25,6 +27,8 @@ interface RequestWithUser {
   };
 }
 
+@ApiTags('Appointment')
+@ApiBearerAuth()
 @Controller(['appointment', 'appointments'])
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}

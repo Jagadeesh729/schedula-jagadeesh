@@ -17,7 +17,7 @@ import { UpdateRecurringAvailabilityDto } from './dto/update-recurring-availabil
 import { CreateCustomAvailabilityDto } from './dto/create-custom-availability.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
-import { Roles } from '../decorators/roles.decorator';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 interface RequestWithUser {
   user: {
@@ -26,6 +26,8 @@ interface RequestWithUser {
   };
 }
 
+@ApiTags('DoctorAvailability')
+@ApiBearerAuth()
 @Controller('doctor/availability')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('DOCTOR')

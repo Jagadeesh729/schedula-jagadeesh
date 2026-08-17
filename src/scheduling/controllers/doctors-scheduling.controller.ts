@@ -16,6 +16,8 @@ import { SchedulingConfigService } from '../services/scheduling-config.service';
 import { AppointmentService } from '../services/appointment.service';
 import { CreateSchedulingConfigDto } from '../dto/scheduling.dto';
 
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
 interface RequestWithUser {
   user: {
     id: string;
@@ -23,6 +25,8 @@ interface RequestWithUser {
   };
 }
 
+@ApiTags('DoctorsScheduling')
+@ApiBearerAuth()
 @Controller('doctors')
 export class DoctorsSchedulingController {
   constructor(

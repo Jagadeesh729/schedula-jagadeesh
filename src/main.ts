@@ -50,10 +50,7 @@ async function bootstrap() {
         '• [GitHub Repository](https://github.com/Jagadeesh729/schedula-jagadeesh)',
     )
     .setVersion('1.0.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'JWT-auth',
-    )
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
